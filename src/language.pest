@@ -1,0 +1,11 @@
+
+operator = {"+"|"-"|"/"|"*"}
+varname = {ASCII_ALPHANUMERIC+}
+number = { ASCII_DIGIT+ }
+value = { varname | number }
+complex_expression = {value ~ operator ~ expression}
+expression = { complex_expression | value}
+declaration = {"var " ~ ASCII_ALPHANUMERIC+ ~ "=" ~ expression}
+assignment = { varname ~ "=" ~ expression }
+line = { assignment | declaration | expression }
+file = { SOI ~ (line ~ (";"~"\r\n" | "\n"))* ~ EOI }
