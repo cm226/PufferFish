@@ -1,4 +1,4 @@
-use asm_generator::code_generator::{Data, Generator, Instruction};
+use asm_generator::{asm_helpers::INSTRUCTION, code_generator::{Data, Generator, Instruction}};
 use pest::{iterators::Pair, Parser};
 use pest_derive::Parser;
 
@@ -9,60 +9,103 @@ mod asm_compiler;
 #[grammar = "language.pest"]
 pub struct CSVParser;
 
-fn parse_expression(expression : Pair<Rule>) { 
-    println!("whole exp {:?}", expression.as_str());
+fn op_to_instr(op : &str) -> INSTRUCTION { 
+    match op {
+        "+" => INSTRUCTION::ADD,
+        _ => unreachable!()
+    }
+}
+
+// Note Recursive, 
+// Contract, result is always put into edx
+fn parse_expression(expression : Pair<Rule>, gen : &mut Generator) {
     for exp in expression.into_inner() {
         match exp.as_rule() {
-            Rule::number => println!("num {}", exp.as_str()),
+            Rule::value => {
+                parse_expression(exp, gen);
+            },
+            Rule::number => {
+                gen.add_inst(Instruction{
+                    instruction:INSTRUCTION::MOV,
+                    args:vec!["edx".to_string(),String::from(exp.as_str())]
+                });
+            },
+            Rule::varname =>{
+                gen.add_inst(Instruction{
+                    instruction:INSTRUCTION::MOV,
+                    args:vec!["edx".to_string(),format!("[{}]",exp.as_str())]
+                });
+            }
             Rule::complex_expression => {
                 let mut complex = exp.into_inner();
-                let first = complex.next().unwrap().as_str();
+                parse_expression(complex.next().unwrap(), gen);
+
+                gen.add_inst(Instruction{
+                    instruction:INSTRUCTION::MOV,
+                    args:vec!["ecx".to_string(),"edx".to_string()]
+                });
+
                 let op = complex.next().unwrap().as_str();
-                let second = complex.next().unwrap().as_str();
-                println!("assigned to {} {} {}", first, op, second);
+                
+                parse_expression(complex.next().unwrap(), gen);
+
+                gen.add_inst(Instruction{
+                    instruction:op_to_instr(op),
+                    args:vec!["edx".to_string(),"ecx".to_string()]
+                });
             },
-            _ => ()
+            _ => unreachable!()
         }
     }
 }
 
-fn parse_assignment(assignment : Pair<Rule>) {
-    println!("whole assignment is {}", assignment.as_str());
-    
+fn parse_assignment(assignment : Pair<Rule>, gen : &mut Generator) {
+   
     let mut ex_it = assignment.into_inner();
     let var_name = ex_it.next().unwrap();
     let value = ex_it.next().unwrap();        
 
-    println!("var {} assigned to :", var_name);
-    parse_expression(value);
+    parse_expression(value, gen);
+
+    gen.add_inst(Instruction{
+        instruction:INSTRUCTION::MOV,
+        args:vec![format!("[{}]",var_name.as_str()), "edx".to_string()]
+    });
 }
 
 fn parse_fn_call(fn_call : Pair<Rule>, gen : &mut Generator) { 
-    println!("whole function call is {}", fn_call.as_str());
 
     let mut fn_it = fn_call.into_inner();
     let fn_name = fn_it.next().unwrap();
     let fn_expression = fn_it.next().unwrap();
-    println!("whole function name {}", fn_name.as_str());
-    println!("whole function expression {}", fn_expression.as_str());
 
-    gen.add_inst(Instruction{
-        instruction:"mov".to_string(),
-        args:vec!["edx".to_string(),format!("'{}'",fn_expression.as_str())]
-    });
-
-    gen.add_inst(Instruction{
-        instruction:"mov".to_string(),
-        args:vec!["[print]".to_string(),"edx".to_string()]
-    });
+    parse_expression(fn_expression, gen);
 
     match fn_name.as_str() {
-        "print" => asm_generator::asm_helpers::gen_std_out("print", 1, gen),
+        "print" => asm_generator::asm_helpers::gen_std_out("edx", 1, gen),
         _ => ()
     }
-
 }
 
+fn parse_declaration(dec : Pair<Rule>, gen : &mut Generator) {
+
+    let mut fn_it = dec.into_inner();
+    let varname = fn_it.next().unwrap();
+    let expression = fn_it.next().unwrap();
+
+    parse_expression(expression, gen); // result not in edx
+
+    gen.add_bss(Data{
+        name: varname.as_str().to_string(),
+        kind: "resb".to_string(),
+        args: vec!["1".to_string()]
+    });
+
+    gen.add_inst(Instruction{
+        instruction:INSTRUCTION::MOV,
+        args: vec![format!("[{}]",varname.as_str().to_string()), "edx".to_string()]
+    })
+}
 
 fn main() {
 
@@ -73,42 +116,6 @@ fn main() {
         kind: "resb".to_string(),
         args: vec!["1".to_string()] });
 
-    // generator.add_inst(Instruction{
-    //     instruction:"mov".to_string(),
-    //     args:vec!["edx".to_string(), "len".to_string()]
-    // });
-
-    // generator.add_inst(Instruction{
-    //     instruction:"mov".to_string(),
-    //     args:vec!["ecx".to_string(), "msg".to_string()]
-    // });
-
-    // generator.add_inst(Instruction{
-    //     instruction:"mov".to_string(),
-    //     args:vec!["ebx".to_string(), "1".to_string()]
-    // });
-
-    // generator.add_inst(Instruction{
-    //     instruction:"mov".to_string(),
-    //     args:vec!["eax".to_string(), "4".to_string()]
-    // });
-
-    // generator.add_inst(Instruction{
-    //     instruction:"int".to_string(),
-    //     args:vec!["0x80".to_string()]
-    // });
-
-    // generator.add_data(Data { 
-    //     name: "msg".to_string(),
-    //     kind: "db".to_string(),
-    //     args: vec!["'Hello, world!'".to_owned(), "0xa".to_owned()]
-    // });
-
-    // generator.add_data(Data { 
-    //     name: "len".to_string(),
-    //     kind: "equ".to_string(),
-    //     args: vec!["$ - msg".to_string()]
-    // });
     
     let unparsed_file = std::fs::read_to_string("program.puff").expect("cannot read file");
 
@@ -123,13 +130,16 @@ fn main() {
                     for expression in line.into_inner() {
                         match expression.as_rule() {
                             Rule::assignment => {
-                                parse_assignment(expression);
+                                parse_assignment(expression, &mut generator);
                             },
                             Rule::declaration => {
-                                println!("Declaration");
+                                parse_declaration(expression, &mut generator);
                             },
                             Rule::function => {
                                 parse_fn_call(expression, &mut generator);
+                            },
+                            Rule::expression => {
+                                parse_expression(expression, &mut generator);
                             }
                             _ => unreachable!(),
                         }

@@ -2,11 +2,11 @@
 operator = {"+"|"-"|"/"|"*"}
 varname = {ASCII_ALPHANUMERIC+}
 number = { ASCII_DIGIT+ }
-value = { varname | number }
+value = { number | varname  }
 function = { varname ~ "(" ~ expression ~ ")"}
 complex_expression = {value ~ operator ~ expression}
-expression = { complex_expression | value | function | varname}
-declaration = {"var " ~ ASCII_ALPHANUMERIC+ ~ "=" ~ expression}
+expression = { complex_expression | value | function }
+declaration = {"var " ~ varname ~ "=" ~ expression}
 assignment = { varname ~ "=" ~ expression }
 line = { assignment | declaration | function | expression}
 file = { SOI ~ (line ~ (";"~"\r\n" | "\n"))* ~ EOI }

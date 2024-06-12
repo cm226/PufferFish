@@ -1,1 +1,4 @@
-print(2);
+var num=5;
+print(num);
+num=num*num+1;
+print(num);

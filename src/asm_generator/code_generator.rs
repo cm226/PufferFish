@@ -1,7 +1,9 @@
 use std::fmt;
 
+use super::asm_helpers::INSTRUCTION;
+
 pub struct Instruction { 
-  pub instruction : String,
+  pub instruction : INSTRUCTION,
   pub args : Vec<String>
 }
 
@@ -69,12 +71,12 @@ impl Generator {
 
     // Add the exit code 
     self.add_inst(Instruction{
-      instruction : "mov".to_string(),
+      instruction : INSTRUCTION::MOV,
       args : vec!["eax".to_string(), "1".to_string()]
     });
 
     self.add_inst(Instruction{
-        instruction:"int".to_string(),
+        instruction: INSTRUCTION::INT,
         args:vec!["0x80".to_string()]
     });
 
