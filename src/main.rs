@@ -164,5 +164,12 @@ fn main() {
         }
 
         let output = generator.generate();
-        asm_compiler::compile_asm(&output);
+        
+        match asm_compiler::compile_asm(&output) {
+            Err(e) => { 
+                println!("Failed to compile asm!: {}", e);
+            },
+            Ok(_)=> { println!("Program Compiled Successfully")}
+        }
+
 }
