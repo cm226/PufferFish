@@ -7,9 +7,9 @@ pub struct Instruction {
   pub args : Vec<String>
 }
 
-impl Instruction { 
-  fn to_string(&self) -> String{ // Impl display fmt?
-    return format!("{} {}", self.instruction, self.args.join(","))
+impl fmt::Display for Instruction {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+      write!(f, "{} {}", self.instruction, self.args.join(","))
   }
 }
 
@@ -19,9 +19,9 @@ pub struct Data {
   pub args : Vec<String>
 }
 
-impl Data {
-  fn to_string(&self) -> String {
-    return format!("{} {} {}", self.name, self.kind, self.args.join(","))
+impl fmt::Display for Data {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+      write!(f, "{} {} {}", self.name, self.kind, self.args.join(","))
   }
 }
 
@@ -47,7 +47,7 @@ impl Generator {
     let _ = fmt::write(output, format_args!("_start:\n"));
 
     for instruction in &self.section_text {
-      let _ = fmt::write(output, format_args!("{}\n", instruction.to_string()));
+      let _ = fmt::write(output, format_args!("{}\n", instruction));
     }
   }
 
@@ -55,14 +55,14 @@ impl Generator {
     let _ = fmt::write(output, format_args!("segment .data\n"));
 
     for data in &self.section_data {
-      let _ = fmt::write(output, format_args!("{}\n", data.to_string()));
+      let _ = fmt::write(output, format_args!("{}\n", data));
     }
   }
 
   fn generate_bss_section(&self, output : &mut String) {
     let _ = fmt::write(output, format_args!("segment .bss\n"));
     for data in &self.section_bss {
-      let _ = fmt::write(output, format_args!("{}\n", data.to_string()));
+      let _ = fmt::write(output, format_args!("{}\n", data));
     }
   }
 

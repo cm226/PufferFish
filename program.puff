@@ -1,4 +1,2 @@
-var num=5;
-print(num);
-num=num*num+1;
+var num=2*3;
 print(num);

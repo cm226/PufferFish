@@ -7,7 +7,8 @@ use strum_macros::Display;
 pub enum INSTRUCTION { 
   MOV,
   INT,
-  ADD
+  ADD,
+  MUL
 }
 
 pub fn gen_std_out(register : &str,size: u32, gen : &mut Generator) { 

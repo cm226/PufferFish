@@ -9,9 +9,25 @@ mod asm_compiler;
 #[grammar = "language.pest"]
 pub struct CSVParser;
 
-fn op_to_instr(op : &str) -> INSTRUCTION { 
+fn op_to_instr(op : &str, gen: &mut Generator) { 
     match op {
-        "+" => INSTRUCTION::ADD,
+        "+" => {
+            gen.add_inst(Instruction{
+                instruction:INSTRUCTION::ADD,
+                args:vec!["edx".to_string(),"eax".to_string()]
+            });
+        },
+        "*" => {
+            gen.add_inst(Instruction{
+                instruction:INSTRUCTION::MUL,
+                args:vec!["edx".to_string()]
+            });
+
+            gen.add_inst(Instruction{
+                instruction:INSTRUCTION::MOV,
+                args:vec!["edx".to_string(), "eax".to_string()]
+            });
+        }
         _ => unreachable!()
     }
 }
@@ -42,17 +58,14 @@ fn parse_expression(expression : Pair<Rule>, gen : &mut Generator) {
 
                 gen.add_inst(Instruction{
                     instruction:INSTRUCTION::MOV,
-                    args:vec!["ecx".to_string(),"edx".to_string()]
+                    args:vec!["eax".to_string(),"edx".to_string()]
                 });
 
                 let op = complex.next().unwrap().as_str();
                 
                 parse_expression(complex.next().unwrap(), gen);
 
-                gen.add_inst(Instruction{
-                    instruction:op_to_instr(op),
-                    args:vec!["edx".to_string(),"ecx".to_string()]
-                });
+                op_to_instr(op, gen);
             },
             _ => unreachable!()
         }
