@@ -1,6 +1,18 @@
-use std::fmt;
+use std::{borrow::Borrow, fmt};
 
 use super::asm_helpers::INSTRUCTION;
+
+fn args_from_borrowable<S,T>(args : S) -> Vec<String>
+where
+  S: IntoIterator<Item = T>,
+  T : Borrow<str>
+{
+  let mut args_v = Vec::new();
+  for arg in args{
+    args_v.push(String::from(arg.borrow()));
+  }
+  args_v
+}
 
 pub struct Instruction { 
   pub instruction : INSTRUCTION,
@@ -13,10 +25,37 @@ impl fmt::Display for Instruction {
   }
 }
 
+impl Instruction { 
+  pub fn from<S, T>(instruction : INSTRUCTION, args: S) -> Self
+  where
+    S: IntoIterator<Item = T>,
+    T : Borrow<str>
+    {
+      Instruction{
+        instruction : instruction,
+        args: args_from_borrowable(args)
+      }
+    }
+}
+
 pub struct Data { 
   pub name : String, 
   pub kind : String, 
   pub args : Vec<String>
+}
+
+impl Data { 
+  pub fn from<S, T>(name : T, kind : T, args: S) -> Self
+  where
+    S: IntoIterator<Item = T>,
+    T : Borrow<str>
+    {
+      Data{
+        name : String::from(name.borrow()),
+        kind : String::from(kind.borrow()),
+        args: args_from_borrowable(args)
+      }
+    }
 }
 
 impl fmt::Display for Data {
