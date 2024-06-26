@@ -82,7 +82,7 @@ fn parse_declaration(dec : Pair<Rule>, gen : &mut Generator) {
 
     parse_expression(expression, gen); // result not in edx
 
-    gen.add_bss(Data::from(varname.as_str(),"resb", ["1"]));
+    gen.add_bss(Data::from(varname.as_str(),"RESD", ["1"]));
     gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[{}]",varname.as_str().to_string()), "edx"]));
 }
 

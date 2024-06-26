@@ -14,7 +14,7 @@ fn main() {
 
     let mut generator = asm_generator::code_generator::Generator::new();
 
-    generator.add_bss(Data::from("print","resb",["1"])); // TODO put somewhere else, var used for printing    
+    generator.add_bss(Data::from("print","RESD",["1"])); // TODO put somewhere else, var used for printing    
     let unparsed_file = std::fs::read_to_string("program.puff").expect("cannot read file");
 
     let file = PuffParser::parse(Rule::file, &unparsed_file)
