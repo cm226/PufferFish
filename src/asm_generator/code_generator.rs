@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, fmt};
 
-use super::asm_helpers::INSTRUCTION;
+use super::asm_helpers::{gen_std_out_fn, INSTRUCTION};
 
 fn args_from_borrowable<S,T>(args : S) -> Vec<String>
 where
@@ -38,6 +38,27 @@ impl Instruction {
     }
 }
 
+pub struct Label { 
+  pub name : String,
+}
+
+impl fmt::Display for Label {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+      write!(f, "{}:", self.name)
+  }
+}
+
+impl Label { 
+  pub fn from<T>(name: T) -> Self
+  where
+    T : Borrow<str>
+    {
+      Label{
+        name : String::from(name.borrow()),
+      }
+    }
+}
+
 pub struct Data { 
   pub name : String, 
   pub kind : String, 
@@ -64,8 +85,13 @@ impl fmt::Display for Data {
   }
 }
 
+enum TextLines { 
+  Instruction(Instruction),
+  Label(Label)
+}
+
 pub struct Generator { 
-  section_text : Vec<Instruction>,
+  section_text : Vec<TextLines>,
   section_data : Vec<Data>,
   section_bss : Vec<Data>
 }
@@ -86,7 +112,10 @@ impl Generator {
     let _ = fmt::write(output, format_args!("_start:\n"));
 
     for instruction in &self.section_text {
-      let _ = fmt::write(output, format_args!("{}\n", instruction));
+      let _ = match instruction{
+        TextLines::Instruction(instruct) => fmt::write(output, format_args!("{}\n", instruct)),
+        TextLines::Label(label) => fmt::write(output, format_args!("{}\n", label))
+      };
     }
   }
 
@@ -107,7 +136,6 @@ impl Generator {
 
   pub fn generate(&mut self) -> String {
     let mut output = String::new();
-
     // Add the exit code 
     self.add_inst(Instruction{
       instruction : INSTRUCTION::MOV,
@@ -119,6 +147,10 @@ impl Generator {
         args:vec!["0x80".to_string()]
     });
 
+    // add the code to print function
+    gen_std_out_fn(self);
+
+
     self.generate_text_section(&mut output);
     let _ = fmt::write(&mut output, format_args!("\n"));
     self.generate_data_section(&mut output);
@@ -129,7 +161,11 @@ impl Generator {
   }
 
   pub fn add_inst(&mut self, inst: Instruction) {
-    self.section_text.push(inst)
+    self.section_text.push(TextLines::Instruction(inst))
+  }
+
+  pub fn add_label(&mut self, label: Label) {
+    self.section_text.push(TextLines::Label(label))
   }
 
   pub fn add_data(&mut self, data: Data) {

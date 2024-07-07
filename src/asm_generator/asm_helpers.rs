@@ -1,5 +1,5 @@
 
-use super::code_generator::{Generator, Instruction};
+use super::code_generator::{Generator, Instruction, Label};
 
 use strum_macros::Display;
 
@@ -8,45 +8,42 @@ pub enum INSTRUCTION {
   MOV,
   INT,
   ADD,
-  MUL
+  MUL, 
+  DIV,
+  PUSH,
+  CMP,
+  JNZ,
+  RET,
+  CALL
 }
 
-pub fn gen_std_out(register : &str,size: u32, gen : &mut Generator) { 
+pub fn gen_std_out_fn(gen : &mut Generator) { 
 
-    gen.add_inst(Instruction{
-        instruction:INSTRUCTION::MOV,
-        args:vec!["[print]".to_string(),register.to_string()]
-    });
+    gen.add_label(Label::from("print_fn"));
+    
+    // setup some registers we will need
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ebx", "10"])); // divisor
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ecx", "0"])); // character counter
 
-    gen.add_inst(Instruction{
-      instruction:INSTRUCTION::ADD,
-      args:vec!["byte [print]".to_string(),"'0'".to_string()]
-  });
+    // covert base 2 to base 10 and push to stack
+    gen.add_label(Label::from("convert_loop"));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx", "0"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::DIV,["ebx"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::ADD,["edx", "'0'"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::ADD,["ecx", "2"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::PUSH,["dx"]));
+    // Are we done yet?
+    gen.add_inst(Instruction::from(INSTRUCTION::CMP,["eax", "0"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::JNZ,["convert_loop"]));
 
-    gen.add_inst(Instruction{
-        instruction:INSTRUCTION::MOV,
-        args:vec!["edx".to_string(), size.to_string()]
-    });
+    // std write the stack
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx", "ecx"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ecx", "esp"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ebx", "1"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax", "4"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::INT,["0x80"]));
 
-    if register != "ecx" {
-      gen.add_inst(Instruction{
-        instruction:INSTRUCTION::MOV,
-        args:vec!["ecx".to_string(), "print".to_string()]
-      });
-    }
+    gen.add_inst(Instruction::from(INSTRUCTION::ADD,["esp", "edx"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::RET,[""]));
 
-    gen.add_inst(Instruction{
-        instruction:INSTRUCTION::MOV,
-        args:vec!["ebx".to_string(), "1".to_string()]
-    });
-
-    gen.add_inst(Instruction{
-        instruction:INSTRUCTION::MOV,
-        args:vec!["eax".to_string(), "4".to_string()]
-    });
-
-    gen.add_inst(Instruction{
-      instruction:INSTRUCTION::INT,
-      args:vec!["0x80".to_string()]
-  });
 }

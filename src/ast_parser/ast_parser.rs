@@ -69,7 +69,11 @@ fn parse_fn_call(fn_call : Pair<Rule>, gen : &mut Generator) {
     parse_expression(fn_expression, gen);
 
     match fn_name.as_str() {
-        "print" => asm_generator::asm_helpers::gen_std_out("edx", 1, gen),
+        "print" => {
+            // move the thing to print into eax thats where we will print from
+            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax", "edx"]));
+            gen.add_inst(Instruction::from(INSTRUCTION::CALL,["print_fn"]));
+        },
         _ => ()
     }
 }
