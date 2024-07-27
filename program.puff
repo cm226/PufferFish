@@ -1,3 +1,5 @@
-var num=2*3;
-print(num*3);
+var num=2 * 3;
+
+print(num * 3 );
+
 print(num);

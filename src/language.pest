@@ -1,12 +1,13 @@
 
+WHITESPACE = _{ " " | "\r\n" | "\n"}
 operator = {"+"|"-"|"/"|"*"}
-varname = {ASCII_ALPHANUMERIC+}
+varname = @{ASCII_ALPHANUMERIC+}
 number = { ASCII_DIGIT+ }
 value = { number | varname  }
 function = { varname ~ "(" ~ expression ~ ")"}
 complex_expression = {value ~ operator ~ expression}
 expression = { complex_expression | value | function }
-declaration = {"var " ~ varname ~ "=" ~ expression}
+declaration = {"var" ~ varname ~ "=" ~ expression}
 assignment = { varname ~ "=" ~ expression }
 line = { assignment | declaration | function | expression}
-file = { SOI ~ (line ~ (";"~"\r\n" | "\n"))* ~ EOI }
+file = { SOI ~ (line ~ ";")* ~ EOI }
