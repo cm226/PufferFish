@@ -25,6 +25,11 @@ pub fn gen_std_out_fn(gen : &mut Generator) {
     gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ebx", "10"])); // divisor
     gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ecx", "0"])); // character counter
 
+    // Add newline char
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx", "10"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::PUSH,["dx"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::ADD,["ecx", "2"]));
+
     // covert base 2 to base 10 and push to stack
     gen.add_label(Label::from("convert_loop"));
     gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx", "0"]));

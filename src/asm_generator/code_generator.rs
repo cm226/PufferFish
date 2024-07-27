@@ -168,9 +168,9 @@ impl Generator {
     self.section_text.push(TextLines::Label(label))
   }
 
-  pub fn add_data(&mut self, data: Data) {
-    self.section_data.push(data)
-  }
+  // pub fn add_data(&mut self, data: Data) {
+  //   self.section_data.push(data)
+  // }
 
   pub fn add_bss(&mut self, data: Data) {
     self.section_bss.push(data)

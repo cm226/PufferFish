@@ -2,7 +2,6 @@ use pest::iterators::Pair;
 
 use crate::{
 asm_generator::{
-    self,
     asm_helpers::INSTRUCTION,
     code_generator::{
         Data, Generator, Instruction
