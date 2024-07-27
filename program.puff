@@ -1,5 +1,15 @@
-var num=2 * 3;
+var num1 = 12;
 
-print(num * 3 );
+var num2 = 10;
 
-print(num);
+print(num1 * num2);
+
+print(num1);
+
+var num3=num1+2;
+
+print(num3);
+
+fn anim(f){
+  var n=1;
+};

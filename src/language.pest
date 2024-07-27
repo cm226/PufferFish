@@ -6,8 +6,13 @@ number = { ASCII_DIGIT+ }
 value = { number | varname  }
 function = { varname ~ "(" ~ expression ~ ")"}
 complex_expression = {value ~ operator ~ expression}
-expression = { complex_expression | value | function }
-declaration = {"var" ~ varname ~ "=" ~ expression}
+expression = { function | complex_expression | value }
+var_declaration = {"var" ~ varname ~ "=" ~ expression}
+fn_declaration = {
+  "fn " ~ varname ~ "(" ~ varname ~ ")" ~ "{" ~
+    (line ~ ";")* ~
+  "}"
+}
 assignment = { varname ~ "=" ~ expression }
-line = { assignment | declaration | function | expression}
+line = { assignment | var_declaration | fn_declaration | expression}
 file = { SOI ~ (line ~ ";")* ~ EOI }

@@ -44,6 +44,9 @@ fn parse_expression(expression : Pair<Rule>, gen : &mut Generator) {
                 parse_expression(complex.next().unwrap(), gen);
                 op_to_instr(op, gen);
             },
+            Rule::function => {
+                parse_fn_call(exp, gen);
+            },
             _ => unreachable!()
         }
     }
@@ -99,11 +102,8 @@ pub fn generate_from_ast(ast : Pair<Rule>, generator : &mut Generator) {
                         Rule::assignment => {
                             parse_assignment(expression, generator);
                         },
-                        Rule::declaration => {
+                        Rule::var_declaration => {
                             parse_declaration(expression, generator);
-                        },
-                        Rule::function => {
-                            parse_fn_call(expression, generator);
                         },
                         Rule::expression => {
                             parse_expression(expression, generator);
