@@ -1,13 +1,13 @@
+use std::collections::HashMap;
+
 use pest::iterators::Pair;
 
 use crate::{
 asm_generator::{
-    asm_helpers::INSTRUCTION,
-    code_generator::{
-        Data, Generator, Instruction
+    self, asm_helpers::INSTRUCTION, code_generator::{
+        Data, Generator, Instruction, Label
     }},
 Rule};
-
 
 fn op_to_instr(op : &str, gen: &mut Generator) { 
     match op {
@@ -76,7 +76,9 @@ fn parse_fn_call(fn_call : Pair<Rule>, gen : &mut Generator) {
             gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax", "edx"]));
             gen.add_inst(Instruction::from(INSTRUCTION::CALL,["print_fn"]));
         },
-        _ => ()
+        _ => {
+            gen.add_inst(Instruction::from(INSTRUCTION::CALL,[fn_name.as_str()]));
+        }
     }
 }
 
@@ -92,27 +94,56 @@ fn parse_declaration(dec : Pair<Rule>, gen : &mut Generator) {
     gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[{}]",varname.as_str().to_string()), "edx"]));
 }
 
-pub fn generate_from_ast(ast : Pair<Rule>, generator : &mut Generator) { 
+fn parse_fn_declaration(fn_dec : Pair<Rule>, gen : &mut Generator) { 
+    let mut fn_generator = asm_generator::code_generator::Generator::new();
+    let mut variable_offsets : HashMap<String, i32> = HashMap::new();
+
+    let mut fn_it = fn_dec.into_inner();
+    let fn_name = fn_it.next().unwrap();
+
+    fn_generator.add_label(Label::from(fn_name.as_str()));
+
+    // This language only allows a single param.... so ima just yeet this corner off, nothing to see here
+    let param_name = fn_it.next().unwrap();
+    variable_offsets.insert(String::from(param_name.as_str()), 0);
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["edx"]));
+
+    while let Some(line) = fn_it.next() {
+        parse_line(line, &mut fn_generator);
+    }
+
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::POP, ["edx"]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::RET,[""]));
+
+    gen.append(&mut fn_generator);
+
+}
+
+fn parse_line(line: Pair<Rule>, generator : &mut Generator) {
+    for expression in line.into_inner() {
+        match expression.as_rule() {
+            Rule::assignment => {
+                parse_assignment(expression, generator);
+            },
+            Rule::var_declaration => {
+                parse_declaration(expression, generator);
+            },
+            Rule::fn_declaration => {
+                parse_fn_declaration(expression, generator);
+            },
+            Rule::expression => {
+                parse_expression(expression, generator);
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub fn generate_from_ast(ast : Pair<Rule>, generator : &mut Generator) {
     for line in ast.into_inner() {
         match line.as_rule() {
             Rule::EOI => (),
-            Rule::line => {
-                for expression in line.into_inner() {
-                    match expression.as_rule() {
-                        Rule::assignment => {
-                            parse_assignment(expression, generator);
-                        },
-                        Rule::var_declaration => {
-                            parse_declaration(expression, generator);
-                        },
-                        Rule::expression => {
-                            parse_expression(expression, generator);
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                
-            },
+            Rule::line => parse_line(line, generator),
             _ => unreachable!(),
         }
     }

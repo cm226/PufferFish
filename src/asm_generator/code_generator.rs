@@ -85,13 +85,14 @@ impl fmt::Display for Data {
   }
 }
 
-enum TextLines { 
+pub enum TextLines { 
   Instruction(Instruction),
   Label(Label)
 }
 
 pub struct Generator { 
   section_text : Vec<TextLines>,
+  section_fn : Vec<TextLines>, // Function lines go at the end of the text section so store separately?
   section_data : Vec<Data>,
   section_bss : Vec<Data>
 }
@@ -101,6 +102,7 @@ impl Generator {
   pub fn new() -> Generator { 
     return Generator{
       section_text : Vec::new(),
+      section_fn : Vec::new(),
       section_data : Vec::new(),
       section_bss : Vec::new()
     }
@@ -150,6 +152,7 @@ impl Generator {
     // add the code to print function
     gen_std_out_fn(self);
 
+    self.section_text.append(&mut self.section_fn);
 
     self.generate_text_section(&mut output);
     let _ = fmt::write(&mut output, format_args!("\n"));
@@ -168,12 +171,13 @@ impl Generator {
     self.section_text.push(TextLines::Label(label))
   }
 
-  // pub fn add_data(&mut self, data: Data) {
-  //   self.section_data.push(data)
-  // }
-
   pub fn add_bss(&mut self, data: Data) {
     self.section_bss.push(data)
+  }
+
+  pub fn append(&mut self, gen: &mut Generator) {
+    self.section_fn.append(&mut gen.section_text);
+    self.section_bss.append(&mut gen.section_bss); // TODO implement proper stack not this BS
   }
 
 }

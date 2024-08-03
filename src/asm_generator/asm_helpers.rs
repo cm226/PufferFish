@@ -11,6 +11,7 @@ pub enum INSTRUCTION {
   MUL, 
   DIV,
   PUSH,
+  POP,
   CMP,
   JNZ,
   RET,
