@@ -66,6 +66,7 @@ pub struct Data {
 }
 
 impl Data { 
+  #[allow(dead_code)]
   pub fn from<S, T>(name : T, kind : T, args: S) -> Self
   where
     S: IntoIterator<Item = T>,
@@ -171,6 +172,7 @@ impl Generator {
     self.section_text.push(TextLines::Label(label))
   }
 
+  #[allow(dead_code)]
   pub fn add_bss(&mut self, data: Data) {
     self.section_bss.push(data)
   }
