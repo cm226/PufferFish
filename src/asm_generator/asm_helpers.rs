@@ -1,6 +1,7 @@
 
 use super::code_generator::{Generator, Instruction, Label};
 
+use pest::Stack;
 use strum_macros::Display;
 
 #[derive(Display)]
@@ -52,4 +53,13 @@ pub fn gen_std_out_fn(gen : &mut Generator) {
     gen.add_inst(Instruction::from(INSTRUCTION::ADD,["esp", "edx"]));
     gen.add_inst(Instruction::from(INSTRUCTION::RET,[""]));
 
+}
+
+pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
+  gen.add_label(Label::from("anim_loop"));
+  while let Some(anim_fn) =  anim_stack.pop() {
+    gen.add_inst(Instruction::from(INSTRUCTION::CALL, [anim_fn]))
+  }
+
+  gen.add_inst(Instruction::from(INSTRUCTION::JNZ, ["anim_loop"]));
 }

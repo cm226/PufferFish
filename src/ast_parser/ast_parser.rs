@@ -4,7 +4,7 @@ use pest::{iterators::Pair, Stack};
 
 use crate::{
 asm_generator::{
-    self, asm_helpers::INSTRUCTION, code_generator::{
+    self, asm_helpers::{gen_animation, INSTRUCTION}, code_generator::{
         Generator, Instruction, Label
     }},
 Rule};
@@ -94,18 +94,19 @@ fn parse_fn_call(fn_call : Pair<Rule>, gen : &mut Generator, scope: &mut Scope) 
     let fn_name = fn_it.next().unwrap();
     let fn_expression = fn_it.next().unwrap();
 
-    parse_expression(fn_expression, gen, scope)?;
-
     match fn_name.as_str() {
         "print" => {
+            parse_expression(fn_expression, gen, scope)?;
             // move the thing to print into eax thats where we will print from
             gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax", "edx"]));
             gen.add_inst(Instruction::from(INSTRUCTION::CALL,["print_fn"]));
         },
         "anim" => {
-            scope.anim_stack.push(String::from(fn_name.as_str()));
+            scope.function.get(fn_expression.as_str()).ok_or(format!("Function {} is not defined", fn_expression.as_str()))?;
+            scope.anim_stack.push(String::from(fn_expression.as_str()));
         },
         _ => {
+            parse_expression(fn_expression, gen, scope)?;
             scope.function.get(fn_name.as_str()).ok_or(format!("Function: {} is not defined", fn_name.as_str()))?;
             gen.add_inst(Instruction::from(INSTRUCTION::CALL,[fn_name.as_str()]));
         }
@@ -208,6 +209,8 @@ pub fn generate_from_ast(ast : Pair<Rule>, generator : &mut Generator) -> Result
     // cleanup the stack frame
     generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["esp", "ebp"]));
     generator.add_inst(Instruction::from(INSTRUCTION::POP, ["ebp"]));
+
+    gen_animation(generator, scope.anim_stack);
 
     Ok(())
 }

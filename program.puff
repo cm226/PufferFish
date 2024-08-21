@@ -1,8 +1,7 @@
 
-fn anim(f){
+fn testfn(f){
   var n=1;
   print(n);
 };
 
-anim(1);
-anim(1);
+anim(testfn123);
