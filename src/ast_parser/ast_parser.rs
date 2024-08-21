@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}};
 
-use pest::iterators::Pair;
+use pest::{iterators::Pair, Stack};
 
 use crate::{
 asm_generator::{
@@ -11,17 +11,20 @@ Rule};
 
 struct Scope {
     pub stack: HashMap<String, usize>,
-    pub function: HashSet<String>
+    pub function: HashSet<String>,
+    pub anim_stack: Stack<String>
 }
 
 impl Scope { 
     fn new() -> Scope{
         return Scope{
             stack : HashMap::new(),
-            function : HashSet::new()
+            function : HashSet::new(),
+            anim_stack : Stack::new()
         }
     }
 }
+
 
 fn op_to_instr(op : &str, gen: &mut Generator) { 
     match op {
@@ -98,6 +101,9 @@ fn parse_fn_call(fn_call : Pair<Rule>, gen : &mut Generator, scope: &mut Scope) 
             // move the thing to print into eax thats where we will print from
             gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax", "edx"]));
             gen.add_inst(Instruction::from(INSTRUCTION::CALL,["print_fn"]));
+        },
+        "anim" => {
+            scope.anim_stack.push(String::from(fn_name.as_str()));
         },
         _ => {
             scope.function.get(fn_name.as_str()).ok_or(format!("Function: {} is not defined", fn_name.as_str()))?;
