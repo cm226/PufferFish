@@ -1,4 +1,3 @@
-anim(1);
 
 fn anim(f){
   var n=1;

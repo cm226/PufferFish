@@ -1,0 +1,11 @@
+var n = 9;
+
+fn test(f){
+    var n = 100;
+    var m = 200;
+    print(m);
+    print(n);
+};
+
+test(1);
+print(n);

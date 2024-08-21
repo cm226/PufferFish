@@ -139,10 +139,16 @@ impl Generator {
 
   pub fn generate(&mut self) -> String {
     let mut output = String::new();
-    // Add the exit code 
+    // Add the exit code
+    
     self.add_inst(Instruction{
       instruction : INSTRUCTION::MOV,
       args : vec!["eax".to_string(), "1".to_string()]
+    });
+    
+    self.add_inst(Instruction{
+      instruction : INSTRUCTION::MOV,
+      args : vec!["ebx".to_string(), "0".to_string()]
     });
 
     self.add_inst(Instruction{

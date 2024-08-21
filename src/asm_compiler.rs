@@ -1,10 +1,10 @@
 use std::{ffi::OsStr, io::{Error, ErrorKind}, process::Command};
 
-pub fn compile_asm(asm : &str, generate_debug_info : bool) -> Result<(), Error>{ 
+pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> Result<(), Error>{ 
   std::fs::write("output.asm", asm).expect("Failed to write tmp asm file");
 
   let mut compile_args = vec!["-f", "elf",  "output.asm"];
-  let link_args = vec!["-m", "elf_i386", "-o", "output", "output.o"];
+  let link_args = vec!["-m", "elf_i386", "-o", output, "output.o"];
 
   if generate_debug_info { 
     compile_args.extend(vec!["-g", "-F", "dwarf"]);

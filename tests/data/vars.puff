@@ -1,0 +1,5 @@
+var n1 = 111;
+var n2 = 222;
+
+print(n1);
+print(n2);
