@@ -1,7 +1,9 @@
 
 fn testfn(f){
-  var n=1;
-  print(n);
+  print(f);
 };
 
-anim(testfn123);
+testfn(1);
+testfn(2);
+
+anim(testfn);

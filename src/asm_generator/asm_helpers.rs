@@ -9,6 +9,7 @@ pub enum INSTRUCTION {
   MOV,
   INT,
   ADD,
+  SUB,
   MUL, 
   DIV,
   PUSH,
@@ -16,7 +17,10 @@ pub enum INSTRUCTION {
   CMP,
   JNZ,
   RET,
-  CALL
+  CALL,
+  INC,
+  LOOP,
+  DEC
 }
 
 pub fn gen_std_out_fn(gen : &mut Generator) { 
@@ -56,10 +60,22 @@ pub fn gen_std_out_fn(gen : &mut Generator) {
 }
 
 pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
+ 
+  let loop_count = 10;
+  gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["ecx", &loop_count.to_string()]));
+  gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["ecx"]));
   gen.add_label(Label::from("anim_loop"));
+ 
   while let Some(anim_fn) =  anim_stack.pop() {
-    gen.add_inst(Instruction::from(INSTRUCTION::CALL, [anim_fn]))
-  }
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["ecx", "[esp]"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["edx", &loop_count.to_string()]));
+    gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["edx", "ecx"]));
 
-  gen.add_inst(Instruction::from(INSTRUCTION::JNZ, ["anim_loop"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::CALL, [anim_fn]));
+  }
+  gen.add_inst(Instruction::from(INSTRUCTION::POP, ["ecx"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::DEC, ["ecx"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["ecx"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::LOOP, ["anim_loop"]));
+  
 }

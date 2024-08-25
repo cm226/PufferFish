@@ -150,7 +150,7 @@ fn parse_fn_declaration(fn_dec : Pair<Rule>, gen : &mut Generator, scope: &mut S
 
     // This language only allows a single param.... so ima just yeet this corner off, nothing to see here
     let param_name = fn_it.next().unwrap();
-    fn_scope.stack.insert(String::from(param_name.as_str()), 0);
+    fn_scope.stack.insert(String::from(param_name.as_str()), 4);
     fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["edx"]));
 
     while let Some(line) = fn_it.next() {
