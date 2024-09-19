@@ -54,14 +54,20 @@ fn parse_expression(expression : Pair<Rule>, gen : &mut Generator, scope: &mut S
                 let offset = scope.stack.get(exp.as_str())
                     .ok_or(format!("Variable {} is not defined", exp.as_str()))?;
 
-                gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx",&format!("[ebp-{}]",offset)]));
+                gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdx",&format!("[rbp-{}]",offset)]));
             }
             Rule::complex_expression => {
                 let mut complex = exp.into_inner();
-                parse_expression(complex.next().unwrap(), gen, scope)?;
-                gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax","edx"]));
+                
+                // parser is not greedy so for expressions like 1+2+3
+                // we hold on to the first (in this case 1), calculate 2+3 (the second part)
+                // then evaluate the whole. 1 + (2+3)
+                let first = complex.next().unwrap();
+                println!("{}",first.as_str());
                 let op = complex.next().unwrap().as_str();
                 parse_expression(complex.next().unwrap(), gen, scope)?;
+                gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax","edx"]));
+                parse_expression(first, gen, scope)?;
                 op_to_instr(op, gen);
             },
             Rule::function => {
@@ -83,7 +89,7 @@ fn parse_assignment(assignment : Pair<Rule>, gen : &mut Generator, scope: &mut S
     let offset = scope.stack.get(var_name.as_str())
         .ok_or(format!("Variable {} is not defined", var_name))?;
 
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[ebp-{}]",offset), "edx"]));    
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[rbp-{}]",offset), "rdx"]));    
 
     Ok(())
 }
@@ -108,7 +114,9 @@ fn parse_fn_call(fn_call : Pair<Rule>, gen : &mut Generator, scope: &mut Scope) 
         _ => {
             parse_expression(fn_expression, gen, scope)?;
             scope.function.get(fn_name.as_str()).ok_or(format!("Function: {} is not defined", fn_name.as_str()))?;
+            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdi", "rdx"])); // X64 calling convention, first param is in rdi
             gen.add_inst(Instruction::from(INSTRUCTION::CALL,[fn_name.as_str()]));
+
         }
     }
 
@@ -124,12 +132,12 @@ fn parse_declaration(dec : Pair<Rule>, gen : &mut Generator, scope: &mut Scope) 
     parse_expression(expression, gen, scope)?; // result not in edx
 
     // I must be missing something here?
-    // (scope.len() * 4) i would have thought would be the address of the next thing that will be added to the stack
+    // (scope.len() * 8) i would have thought would be the address of the next thing that will be added to the stack
     // so the +4 shouldn't be needed. But it looks like it is needed. 
-    // So when esb == esp (theres nothing on the stack) when you add the first thing, you need to use the address esb + 4? 
+    // So when rsb == rsp (theres nothing on the stack) when you add the first thing, you need to use the address rsb + 8? 
     // so thats stored at esb? 
-    scope.stack.insert(varname.as_str().to_string(), (scope.stack.len() * 4)+4);
-    gen.add_inst(Instruction::from(INSTRUCTION::PUSH,["edx"]));
+    scope.stack.insert(varname.as_str().to_string(), (scope.stack.len() * 8)+8);
+    gen.add_inst(Instruction::from(INSTRUCTION::PUSH,["rdx"]));
 
     Ok(())
 }
@@ -145,21 +153,21 @@ fn parse_fn_declaration(fn_dec : Pair<Rule>, gen : &mut Generator, scope: &mut S
     fn_generator.add_label(Label::from(fn_name.as_str()));
 
     // setup the stack frame
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["ebp"]));
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["ebp", "esp"]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rbp"]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rbp", "rsp"]));
 
     // This language only allows a single param.... so ima just yeet this corner off, nothing to see here
     let param_name = fn_it.next().unwrap();
-    fn_scope.stack.insert(String::from(param_name.as_str()), 4);
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["edx"]));
+    fn_scope.stack.insert(String::from(param_name.as_str()), 8);
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdi"]));
 
     while let Some(line) = fn_it.next() {
         parse_line(line, &mut fn_generator, &mut fn_scope)?;
     }
 
     // cleanup the stack frame
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["esp", "ebp"]));
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::POP, ["ebp"]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsp", "rbp"]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::POP, ["rbp"]));
 
     fn_generator.add_inst(Instruction::from(INSTRUCTION::RET,[""]));
 
@@ -195,8 +203,8 @@ pub fn generate_from_ast(ast : Pair<Rule>, generator : &mut Generator) -> Result
     let mut scope = Scope::new();
 
     // setup the stack frame
-    generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["ebp"]));
-    generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["ebp", "esp"]));
+    generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rbp"]));
+    generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rbp", "rsp"]));
 
     for line in ast.into_inner() {
         match line.as_rule() {
@@ -206,9 +214,10 @@ pub fn generate_from_ast(ast : Pair<Rule>, generator : &mut Generator) -> Result
         }?;
     }
 
+    generator.add_inst(Instruction::from(INSTRUCTION::CALL, ["draw_shape"]));
     // cleanup the stack frame
-    generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["esp", "ebp"]));
-    generator.add_inst(Instruction::from(INSTRUCTION::POP, ["ebp"]));
+    generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsp", "rbp"]));
+    generator.add_inst(Instruction::from(INSTRUCTION::POP, ["rbp"]));
 
     gen_animation(generator, scope.anim_stack);
 

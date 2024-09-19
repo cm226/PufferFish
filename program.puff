@@ -1,9 +1,3 @@
-
-fn testfn(f){
-  print(f);
-};
-
-testfn(1);
-testfn(2);
-
-anim(testfn);
+var i = 20;
+var j = 10;
+print(i + j + 1);

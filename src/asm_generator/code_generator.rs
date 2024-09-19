@@ -111,8 +111,8 @@ impl Generator {
 
   fn generate_text_section(&self, output : &mut String) { 
     let _ = fmt::write(output, format_args!("section .text\n"));
-    let _ = fmt::write(output, format_args!("    global _start\n"));
-    let _ = fmt::write(output, format_args!("_start:\n"));
+    let _ = fmt::write(output, format_args!("    global main\n"));
+    let _ = fmt::write(output, format_args!("main:\n"));
 
     for instruction in &self.section_text {
       let _ = match instruction{
@@ -135,6 +135,10 @@ impl Generator {
     for data in &self.section_bss {
       let _ = fmt::write(output, format_args!("{}\n", data));
     }
+  }
+
+  fn generate_externs_section(&self, output: &mut String){
+    let _ = fmt::write(output, format_args!("extern draw_shape\n")); // from graphics lib
   }
 
   pub fn generate(&mut self) -> String {
@@ -161,6 +165,7 @@ impl Generator {
 
     self.section_text.append(&mut self.section_fn);
 
+    self.generate_externs_section(&mut output);
     self.generate_text_section(&mut output);
     let _ = fmt::write(&mut output, format_args!("\n"));
     self.generate_data_section(&mut output);

@@ -1,4 +1,6 @@
 
+use std::env::args;
+
 use super::code_generator::{Generator, Instruction, Label};
 
 use pest::Stack;
@@ -20,7 +22,8 @@ pub enum INSTRUCTION {
   CALL,
   INC,
   LOOP,
-  DEC
+  DEC,
+  SYSCALL
 }
 
 pub fn gen_std_out_fn(gen : &mut Generator) { 
@@ -48,34 +51,37 @@ pub fn gen_std_out_fn(gen : &mut Generator) {
     gen.add_inst(Instruction::from(INSTRUCTION::JNZ,["convert_loop"]));
 
     // std write the stack
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx", "ecx"]));
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ecx", "esp"]));
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["ebx", "1"]));
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax", "4"]));
-    gen.add_inst(Instruction::from(INSTRUCTION::INT,["0x80"]));
 
-    gen.add_inst(Instruction::from(INSTRUCTION::ADD,["esp", "edx"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rax", "1"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdx", "rcx"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rsi", "rsp"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdi", "1"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::SYSCALL, [""]));
+
+    gen.add_inst(Instruction::from(INSTRUCTION::ADD,["rsp", "rdx"]));
     gen.add_inst(Instruction::from(INSTRUCTION::RET,[""]));
 
 }
 
 pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
  
-  let loop_count = 10;
-  gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["ecx", &loop_count.to_string()]));
-  gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["ecx"]));
+  let loop_count = 10000;
+  //gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["draw_shape"]));
+
+  gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rcx", &loop_count.to_string()]));
+  gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rcx"]));
   gen.add_label(Label::from("anim_loop"));
  
   while let Some(anim_fn) =  anim_stack.pop() {
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["ecx", "[esp]"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["ecx", "[rsp]"]));
     gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["edx", &loop_count.to_string()]));
     gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["edx", "ecx"]));
 
     gen.add_inst(Instruction::from(INSTRUCTION::CALL, [anim_fn]));
   }
-  gen.add_inst(Instruction::from(INSTRUCTION::POP, ["ecx"]));
-  gen.add_inst(Instruction::from(INSTRUCTION::DEC, ["ecx"]));
-  gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["ecx"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rcx"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::DEC, ["rcx"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rcx"]));
   gen.add_inst(Instruction::from(INSTRUCTION::LOOP, ["anim_loop"]));
   
 }

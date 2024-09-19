@@ -17,7 +17,7 @@ fn main() {
         .arg(arg!(
             -d --debug ... "Turn debugging information on"
         ).action(clap::ArgAction::SetTrue))
-        .arg(arg!(-o --output <OUTPUT> "Optinal Output file [default = output]"))
+        .arg(arg!(-o --output <OUTPUT> "Optional Output file [default = output]"))
         .arg(arg!([inputFile] "Program source"))
         .get_matches();
 
