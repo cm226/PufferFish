@@ -1,4 +1,5 @@
 /target
+tests/test_out/
 output.asm
 output
 *.o

@@ -64,9 +64,13 @@ pub fn gen_std_out_fn(gen : &mut Generator) {
 }
 
 pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
- 
+
+  if anim_stack.len() == 0 {
+    return;
+  }
   let loop_count = 10000;
 
+  gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["create_window"]));
   gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rcx", &loop_count.to_string()]));
   gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rcx"]));
   gen.add_label(Label::from("anim_loop"));
@@ -84,5 +88,6 @@ pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
   gen.add_inst(Instruction::from(INSTRUCTION::LOOP, ["anim_loop"]));
   
   gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rcx"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["destroy_window"]));
   
 }

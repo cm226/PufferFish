@@ -214,9 +214,7 @@ pub fn generate_from_ast(ast : Pair<Rule>, generator : &mut Generator) -> Result
         }?;
     }
 
-    generator.add_inst(Instruction::from(INSTRUCTION::CALL, ["create_window"]));
     gen_animation(generator, scope.anim_stack); 
-    generator.add_inst(Instruction::from(INSTRUCTION::CALL, ["destroy_window"]));
     
     // cleanup the stack frame
     generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsp", "rbp"]));
