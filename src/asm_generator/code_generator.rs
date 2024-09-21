@@ -139,6 +139,8 @@ impl Generator {
 
   fn generate_externs_section(&self, output: &mut String){
     let _ = fmt::write(output, format_args!("extern draw_shape\n")); // from graphics lib
+    let _ = fmt::write(output, format_args!("extern create_window\n")); // from graphics lib 
+    let _ = fmt::write(output, format_args!("extern destroy_window\n")); // from graphics lib
   }
 
   pub fn generate(&mut self) -> String {

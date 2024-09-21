@@ -66,7 +66,6 @@ pub fn gen_std_out_fn(gen : &mut Generator) {
 pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
  
   let loop_count = 10000;
-  //gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["draw_shape"]));
 
   gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rcx", &loop_count.to_string()]));
   gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rcx"]));
@@ -83,5 +82,7 @@ pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
   gen.add_inst(Instruction::from(INSTRUCTION::DEC, ["rcx"]));
   gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rcx"]));
   gen.add_inst(Instruction::from(INSTRUCTION::LOOP, ["anim_loop"]));
+  
+  gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rcx"]));
   
 }
