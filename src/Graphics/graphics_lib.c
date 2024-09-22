@@ -25,7 +25,7 @@ extern void create_window(){
     return 1;
   }
   screenSurface = SDL_GetWindowSurface(window);
-  SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0xFF, 0xFF));
+  SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x21, 0x21, 0x21));
   SDL_UpdateWindowSurface(window);
   return 0;
  }
@@ -35,9 +35,11 @@ extern void destroy_window(){
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
-
-extern int draw_shape(/*int x, int y*/) {
-  SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0xFF, 0xFF, 0xFF));
+extern void blit() { 
   SDL_UpdateWindowSurface(window);
+}
+
+extern int draw_shape(int x, int y) {
+  printf("called %i, %i", x, y);
   return 0;
 }

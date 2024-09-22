@@ -77,8 +77,8 @@ pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
  
   while let Some(anim_fn) =  anim_stack.pop() {
     gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["ecx", "[rsp]"]));
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["edx", &loop_count.to_string()]));
-    gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["edx", "ecx"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", &loop_count.to_string()]));
+    gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["rdi", "rcx"]));
 
     gen.add_inst(Instruction::from(INSTRUCTION::CALL, [anim_fn]));
   }
