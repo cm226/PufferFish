@@ -25,6 +25,15 @@ impl Scope {
     }
 }
 
+fn push_var_to_stack(name: &str,scope: &mut Scope ) {
+
+    // I must be missing something here?
+    // (scope.len() * 8) i would have thought would be the address of the next thing that will be added to the stack
+    // so the +4 shouldn't be needed. But it looks like it is needed. 
+    // So when rsb == rsp (theres nothing on the stack) when you add the first thing, you need to use the address rsb + 8? 
+    // so thats stored at esb? 
+    scope.stack.insert(String::from(name), (scope.stack.len() * 8)+8);
+}
 
 fn op_to_instr(op : &str, gen: &mut Generator) { 
     match op {
@@ -131,12 +140,7 @@ fn parse_declaration(dec : Pair<Rule>, gen : &mut Generator, scope: &mut Scope) 
 
     parse_expression(expression, gen, scope)?; // result not in edx
 
-    // I must be missing something here?
-    // (scope.len() * 8) i would have thought would be the address of the next thing that will be added to the stack
-    // so the +4 shouldn't be needed. But it looks like it is needed. 
-    // So when rsb == rsp (theres nothing on the stack) when you add the first thing, you need to use the address rsb + 8? 
-    // so thats stored at esb? 
-    scope.stack.insert(varname.as_str().to_string(), (scope.stack.len() * 8)+8);
+    push_var_to_stack(varname.as_str(), scope);
     gen.add_inst(Instruction::from(INSTRUCTION::PUSH,["rdx"]));
 
     Ok(())
@@ -158,12 +162,30 @@ fn parse_fn_declaration(fn_dec : Pair<Rule>, gen : &mut Generator, scope: &mut S
 
     // This language only allows a single param.... so ima just yeet this corner off, nothing to see here
     let param_name = fn_it.next().unwrap();
-    fn_scope.stack.insert(String::from(param_name.as_str()), 8);
+    push_var_to_stack(param_name.as_str(), &mut fn_scope);
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdi"]));
+
+    push_var_to_stack("x", &mut fn_scope);
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdi"]));
+
+    push_var_to_stack("y", &mut fn_scope);
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
     fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdi"]));
 
     while let Some(line) = fn_it.next() {
         parse_line(line, &mut fn_generator, &mut fn_scope)?;
     }
+
+    let x_offset = fn_scope.stack.get("x")
+        .ok_or(format!("Variable {} is not defined", "x"))?;
+
+    let y_offset = fn_scope.stack.get("y")
+        .ok_or(format!("Variable {} is not defined", "y"))?;
+    
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", &format!("[rbp-{}]",x_offset)]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsi", &format!("[rbp-{}]",y_offset)]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::CALL, ["draw_shape"]));
 
     // cleanup the stack frame
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsp", "rbp"]));

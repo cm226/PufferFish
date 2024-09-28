@@ -68,7 +68,7 @@ pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
   if anim_stack.len() == 0 {
     return;
   }
-  let loop_count = 10000;
+  let loop_count = 100;
 
   gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["create_window"]));
   gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rcx", &loop_count.to_string()]));
@@ -76,15 +76,28 @@ pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
   gen.add_label(Label::from("anim_loop"));
  
   while let Some(anim_fn) =  anim_stack.pop() {
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["ecx", "[rsp]"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rcx", "[rsp]"]));
     gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", &loop_count.to_string()]));
     gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["rdi", "rcx"]));
 
     gen.add_inst(Instruction::from(INSTRUCTION::CALL, [anim_fn]));
   }
+
+
+  // TODO Why do i need to create a new stack frame here to call blit?
+  // Am i doing something wrong, or is there a bug in blit code? 
+  // AFAIK stack frame should be created gcc when generating the code for blit, so this stack frame 
+  // should be redundant.... but if its not here i get seg fault..... confusing!!!
+  gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rbp"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rbp", "rsp"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["blit"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsp", "rbp"]));
+  gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rbp"]));
+
   gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rcx"]));
   gen.add_inst(Instruction::from(INSTRUCTION::DEC, ["rcx"]));
   gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rcx"]));
+
   gen.add_inst(Instruction::from(INSTRUCTION::LOOP, ["anim_loop"]));
   
   gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rcx"]));

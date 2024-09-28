@@ -141,6 +141,8 @@ impl Generator {
     let _ = fmt::write(output, format_args!("extern draw_shape\n")); // from graphics lib
     let _ = fmt::write(output, format_args!("extern create_window\n")); // from graphics lib 
     let _ = fmt::write(output, format_args!("extern destroy_window\n")); // from graphics lib
+    let _ = fmt::write(output, format_args!("extern blit\n")); // from graphics lib
+    let _ = fmt::write(output, format_args!("extern clear\n")); // from graphics lib
   }
 
   pub fn generate(&mut self) -> String {

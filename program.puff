@@ -1,9 +1,12 @@
-var i = 20;
-var j = 10;
-print(i + j + 1);
-
 fn t1(f){
-  print(f);
+  x = 1;
+  y = f;
+};
+
+fn t2(f){
+  x = f;
+  y = 2;
 };
 
 anim(t1);
+anim(t2);
