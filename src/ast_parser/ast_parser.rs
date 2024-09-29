@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet}};
+use std::collections::{HashMap, HashSet};
 
 use pest::{iterators::Pair, Stack};
 
@@ -40,6 +40,9 @@ fn op_to_instr(op : &str, gen: &mut Generator) {
         "+" => {
             gen.add_inst(Instruction::from(INSTRUCTION::ADD, ["edx","eax"]));
         },
+        "-" => {
+            gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["edx","eax"]));
+        },
         "*" => {
             gen.add_inst(Instruction::from(INSTRUCTION::MUL,["edx"]));
             gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx","eax"]));
@@ -72,7 +75,6 @@ fn parse_expression(expression : Pair<Rule>, gen : &mut Generator, scope: &mut S
                 // we hold on to the first (in this case 1), calculate 2+3 (the second part)
                 // then evaluate the whole. 1 + (2+3)
                 let first = complex.next().unwrap();
-                println!("{}",first.as_str());
                 let op = complex.next().unwrap().as_str();
                 parse_expression(complex.next().unwrap(), gen, scope)?;
                 gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax","edx"]));

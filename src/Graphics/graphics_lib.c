@@ -16,7 +16,7 @@ extern void create_window(){
     return;
   }
   window = SDL_CreateWindow(
-          "hello_sdl2",
+          "Pufferfish",
           SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
           SCREEN_WIDTH, SCREEN_HEIGHT,
           SDL_WINDOW_SHOWN
@@ -32,14 +32,14 @@ extern void create_window(){
  }
 
 extern void destroy_window(){
-  SDL_Delay(2000);
+  SDL_Delay(1000);
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
 
 extern void blit() { 
   SDL_UpdateWindowSurface(window);
-  SDL_Delay(50);
+  SDL_Delay(10); // todo
   clear();
 }
 

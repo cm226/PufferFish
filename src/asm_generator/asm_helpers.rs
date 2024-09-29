@@ -1,11 +1,9 @@
-
-use std::env::args;
-
 use super::code_generator::{Generator, Instruction, Label};
 
 use pest::Stack;
 use strum_macros::Display;
 
+#[allow(dead_code)]
 #[derive(Display)]
 pub enum INSTRUCTION { 
   MOV,

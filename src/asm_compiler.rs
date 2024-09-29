@@ -4,7 +4,7 @@ pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> R
   std::fs::write("output.asm", asm).expect("Failed to write tmp asm file");
 
   let mut compile_args = vec!["-f", "elf64",  "output.asm"];
-  let mut link_args = vec![
+  let link_args = vec![
     "-m", "elf_x86_64",
     "-o", output,
     "-l","SDL2",
