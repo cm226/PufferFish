@@ -1,3 +1,5 @@
 var i = 10;
 var j = 20;
 print(i + j + 1);
+print(i*j);
+print(j-1);

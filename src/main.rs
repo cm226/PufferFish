@@ -40,7 +40,7 @@ fn main() {
         .expect("unsuccessful parse") // unwrap the parse result
         .next().unwrap(); // get and unwrap the `file` rule; never fails
     
-    if let Err(e) = ast_parser::ast_parser::generate_from_ast(file, &mut generator) {
+    if let Err(e) = ast_parser::generate_from_ast(file, &mut generator) {
         eprintln!("Compilation Error : {}", e);
         std::process::exit(1);
     }
