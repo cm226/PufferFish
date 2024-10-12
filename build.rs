@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::env;
 
 // Example custom build script.
 fn main() {
@@ -6,7 +7,8 @@ fn main() {
     let lib_file = "src/Graphics/graphics_lib.c";
     println!("cargo::rerun-if-changed={}",lib_file);
     
-    let out_dir = "/mnt/c/projects/rust_compiler/pufferfish";
+    // I dont think this is the right place for this, for now it will do TODO
+    let out_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
     Command::new("gcc").args([
       "-m64", "-Wall", 
@@ -16,4 +18,4 @@ fn main() {
       "-o"])
       .arg(&format!("{}/graphics_lib.o", out_dir))
       .status().unwrap();     
-}
+  }

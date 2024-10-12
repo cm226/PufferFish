@@ -25,7 +25,6 @@
       "cargo": {
         "args": [
           "test",
-          "--no-run",
           "--bin=pufferfish",
           "--package=pufferfish"
         ],

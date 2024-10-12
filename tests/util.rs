@@ -25,8 +25,8 @@ where A : IntoIterator<Item = S>,
 }
 
 pub fn run_test(src: &str, expected: &str) -> Result<(), Error> {
-  let in_file = format!("tests/data/{}.puff", src);
-  let out_file = format!("tests/test_out/{}",src);
+  let in_file = format!("./tests/data/{}.puff", src);
+  let out_file = format!("./tests/test_out/{}",src);
 
   compile(&in_file, &out_file)?;
   let std_out = run_command(&out_file, [""])?;

@@ -1,19 +1,25 @@
-use pest::Parser;
-use pest_derive::Parser;
 use clap::{arg, command};
 
+use crate::from_pest::FromPest;
+
+mod ast_types;
 mod asm_generator;
 mod asm_compiler;
 mod ast_parser;
 
-#[derive(Parser)]
-#[grammar = "language.pest"]
-pub struct PuffParser;
+extern crate pest_derive;
+extern crate from_pest;
+#[macro_use]
+extern crate pest_ast;
+extern crate pest;
 
 fn main() {
 
     let default_out = String::from("output");
     let matches = command!() // requires `cargo` feature
+        .arg(arg!(
+            -v --verbose ... "Enable verbose compiler output"
+        ).action(clap::ArgAction::SetTrue))
         .arg(arg!(
             -d --debug ... "Turn debugging information on"
         ).action(clap::ArgAction::SetTrue))
@@ -35,19 +41,23 @@ fn main() {
     
     let mut generator = asm_generator::code_generator::Generator::new();
     
+    use pest::Parser;
 
-    let file = PuffParser::parse(Rule::file, &unparsed_file)
-        .expect("unsuccessful parse") // unwrap the parse result
-        .next().unwrap(); // get and unwrap the `file` rule; never fails
-    
-    if let Err(e) = ast_parser::generate_from_ast(file, &mut generator) {
+    let mut file = ast_types::PuffParser::parse(ast_types::Rule::file, &unparsed_file).unwrap();
+    let syntax_tree = ast_types::File::from_pest(&mut file).expect("infallible");
+
+    if matches.get_flag("verbose"){
+        println!("{:?}", syntax_tree);
+    }
+
+    if let Err(e) = ast_parser::generate_from_ast(syntax_tree, &mut generator) {
         eprintln!("Compilation Error : {}", e);
         std::process::exit(1);
     }
 
     let output = generator.generate();
     
-    match asm_compiler::compile_asm(&output, generate_debug_info, output_file_path) {
+   match asm_compiler::compile_asm(&output, generate_debug_info, output_file_path) {
         Err(e) => { 
             println!("Failed to compile asm!: {}", e);
         },

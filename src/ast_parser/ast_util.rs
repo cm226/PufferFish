@@ -1,6 +1,6 @@
-use crate::ast_parser::scope::Scope;
+use crate::ast_parser::symbol_table::SymbolTable;
 
-pub fn push_var_to_stack(name: &str,scope: &mut Scope ) {
+pub fn push_var_to_stack(name: &str,scope: &mut SymbolTable ) {
 
     // I must be missing something here?
     // (scope.len() * 8) i would have thought would be the address of the next thing that will be added to the stack
