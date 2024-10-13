@@ -13,7 +13,7 @@ fn falling(f){
 
 anim(falling);
 ```
-<div style="text-align:center"><img src="./docs/example.gif" /></div>
+<p align="center"><img src="./docs/example.gif" /></p>
 
 ### anim function
 
