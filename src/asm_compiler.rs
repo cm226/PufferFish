@@ -3,6 +3,10 @@ use std::{ffi::OsStr, io::{Error, ErrorKind}, process::Command};
 pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> Result<(), Error>{ 
   std::fs::write("output.asm", asm).expect("Failed to write tmp asm file");
 
+  // use GCC to find the location of some packages
+  let crtend_s = run_command("gcc",["--print-file-name=crtendS.o"])?;
+  let scrt1 = run_command("gcc",["--print-file-name=Scrt1.o"])?;
+
   let mut compile_args = vec!["-f", "elf64",  "output.asm"];
   let link_args = vec![
     "-m", "elf_x86_64",
@@ -11,7 +15,7 @@ pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> R
     "-l","c",
     "-dynamic-linker","/lib64/ld-linux-x86-64.so.2", // Use the 64bit loader
     "output.o", "graphics_lib.o", 
-    "/usr/lib/x86_64-linux-gnu/Scrt1.o", "/usr/lib/gcc/x86_64-linux-gnu/11/crtendS.o" // Implementation of _start
+    scrt1.trim(), crtend_s.trim() // Implementation of _start
   ];  
 
   if generate_debug_info {
@@ -26,11 +30,11 @@ pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> R
   Ok(())
 }
 
-fn run_command<A, S>(cmd : &str, args : A) -> Result<(), Error> 
+fn run_command<A, S>(cmd : &str, args : A) -> Result<String, Error> 
 where A : IntoIterator<Item = S>,
       S: AsRef<OsStr>,
 { 
-  Command::new(cmd)
+  let output = Command::new(cmd)
   .args(args)
   .output()
   .and_then(|f| {
@@ -44,6 +48,6 @@ where A : IntoIterator<Item = S>,
     return Ok(f);
   })?;
 
-  return Ok(());
+  return Ok(String::from_utf8( output.stdout).expect("Failed to read STDOUT"));
 
 }
