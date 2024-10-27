@@ -3,6 +3,6 @@ fn test(f){
     print(f);
 };
 
-test(1);
-test(20);
+test(1.0);
+test(20.0);
 

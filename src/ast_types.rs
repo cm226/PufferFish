@@ -12,8 +12,8 @@ fn span_into_str<'a>(span: pest::Span<'a>) -> &str {
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::number))]
 pub struct Number {
-    #[pest_ast(outer(with(span_into_str), with(str::parse), with(Result::unwrap)))]
-    pub value: u32
+    #[pest_ast(outer(with(span_into_str), with(String::from)))]
+    pub value: String
 }
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::varname))]

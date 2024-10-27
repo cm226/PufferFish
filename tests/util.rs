@@ -11,6 +11,7 @@ where A : IntoIterator<Item = S>,
 { 
   Command::new(cmd)
   .args(args)
+  .stdout(std::process::Stdio::piped())
   .output()
   .and_then(|f| {
     if !f.status.success() {

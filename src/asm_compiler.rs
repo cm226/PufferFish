@@ -1,7 +1,13 @@
 use std::{ffi::OsStr, io::{Error, ErrorKind}, process::Command};
+use std::fs;
 
 pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> Result<(), Error>{ 
   std::fs::write("output.asm", asm).expect("Failed to write tmp asm file");
+
+  // create the output folder if needed
+  let mut parent_path = std::path::PathBuf::from(output);
+  parent_path.pop();
+  std::fs::create_dir_all(parent_path)?;
 
   // use GCC to find the location of some packages
   let crtend_s = run_command("gcc",["--print-file-name=crtendS.o"])?;
@@ -13,6 +19,7 @@ pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> R
     "-o", output,
     "-l","SDL2",
     "-l","c",
+    "-l","m",
     "-dynamic-linker","/lib64/ld-linux-x86-64.so.2", // Use the 64bit loader
     "output.o", "graphics_lib.o", 
     scrt1.trim(), crtend_s.trim() // Implementation of _start

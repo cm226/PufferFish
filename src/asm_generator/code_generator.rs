@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, fmt};
 
-use super::asm_helpers::{gen_std_out_fn, INSTRUCTION};
+use super::asm_helpers::INSTRUCTION;
 
 fn args_from_borrowable<S,T>(args : S) -> Vec<String>
 where
@@ -98,6 +98,8 @@ pub struct Generator {
   section_bss : Vec<Data>
 }
 
+pub const GLOBAL_EXTERNAL_FUNCTIONS : &'static [&str] = &["cos", "sin"];
+
 impl Generator { 
 
   pub fn new() -> Generator { 
@@ -143,12 +145,20 @@ impl Generator {
     let _ = fmt::write(output, format_args!("extern destroy_window\n")); // from graphics lib
     let _ = fmt::write(output, format_args!("extern blit\n")); // from graphics lib
     let _ = fmt::write(output, format_args!("extern clear\n")); // from graphics lib
+    let _ = fmt::write(output, format_args!("extern printf\n")); // from c
+    let _ = fmt::write(output, format_args!("extern fflush\n")); // from c
+    for global_extern in GLOBAL_EXTERNAL_FUNCTIONS { 
+      let _ = fmt::write(output, format_args!("extern {}\n", global_extern)); // from c
+    }
   }
 
   pub fn generate(&mut self) -> String {
     let mut output = String::new();
-    // Add the exit code
-    
+
+    // Add the printf format
+    self.add_data(Data::from("print_fmt_str", "db", ["`%f\\n\\0`","0"]));
+
+    // Add the exit code 
     self.add_inst(Instruction{
       instruction : INSTRUCTION::MOV,
       args : vec!["eax".to_string(), "1".to_string()]
@@ -163,9 +173,6 @@ impl Generator {
         instruction: INSTRUCTION::INT,
         args:vec!["0x80".to_string()]
     });
-
-    // add the code to print function
-    gen_std_out_fn(self);
 
     self.section_text.append(&mut self.section_fn);
 
@@ -190,6 +197,10 @@ impl Generator {
   #[allow(dead_code)]
   pub fn add_bss(&mut self, data: Data) {
     self.section_bss.push(data)
+  }
+
+  pub fn add_data(&mut self, data: Data) {
+    self.section_data.push(data);
   }
 
   pub fn append(&mut self, gen: &mut Generator) {

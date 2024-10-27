@@ -4,7 +4,7 @@ mod util;
 
 #[test]
 fn function_test() -> Result<(), Error>{
-    let expected = "2\00\00\0\n\01\00\00\0\n\09\0\n\0";
+    let expected = "200.000000\n100.000000\n9.000000\n";
     util::run_test("fn_stack", expected)?;
     Ok(())
 }

@@ -59,7 +59,8 @@ fn main() {
     
    match asm_compiler::compile_asm(&output, generate_debug_info, output_file_path) {
         Err(e) => { 
-            println!("Failed to compile asm!: {}", e);
+            eprintln!("Failed to compile asm!: {}", e);
+            std::process::exit(1);
         },
         Ok(_)=> { println!("Program Compiled Successfully")}
     }

@@ -42,9 +42,13 @@ fn parse_xy_decleration(fn_dec : &ast_types::FnDeclaration, gen : &mut Generator
 
     let y_offset = fn_scope.stack.get("y")
         .ok_or(format!("Variable {} is not defined", "y"))?;
+
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["xmm0", &format!("[rbp-{}]",x_offset)]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::CVTSD2SI, ["rdi", "xmm0"]));
+
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["xmm0", &format!("[rbp-{}]",y_offset)]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::CVTSD2SI, ["rsi", "xmm0"]));
     
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", &format!("[rbp-{}]",x_offset)]));
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsi", &format!("[rbp-{}]",y_offset)]));
     fn_generator.add_inst(Instruction::from(INSTRUCTION::CALL, ["draw_shape"]));
 
     end_stack_frame(&mut fn_generator);
@@ -93,7 +97,9 @@ fn push_args_to_stack(
 ) { 
     // TODO curently only have support for single fn arg
     push_var_to_stack(&fn_dec.arg.value, fn_scope);
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdi"]));
+
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
+    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdx"]));
 }
 
 fn generate_code_for_fn_body(

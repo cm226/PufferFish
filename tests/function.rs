@@ -4,7 +4,7 @@ mod util;
 
 #[test]
 fn function_test() -> Result<(), Error>{
-    let expected = "1\0\n\02\00\0\n\0";
+    let expected = "1.000000\n20.000000\n";
     util::run_test("functions", expected)?;
     Ok(())
 }

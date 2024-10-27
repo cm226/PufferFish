@@ -1,12 +1,21 @@
-fn t1(f){
-  x = 1;
-  y = f;
+
+fn t(f) {
+    var PI = 3.14;
+    var rots = 2.0;
+    var frames = 500.0;
+    var deltaRad = PI * rots;
+    deltaRad = 0.01256;
+
+    var rad = f * deltaRad;
+
+    x = sin(rad);
+    y = cos(rad);
+
+    x = x * 100.0;
+    y = y * 100.0;
+
+    x = x + 100.0;
+    y = y + 100.0;
 };
 
-fn t2(f){
-  x = 1;
-  y = f - 20;
-};
-
-anim(t1);
-anim(t2);
+anim(t);

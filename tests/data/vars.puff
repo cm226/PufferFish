@@ -1,5 +1,5 @@
-var n1 = 111;
-var n2 = 222;
+var n1 = 111.0;
+var n2 = 222.0;
 
 print(n1);
 print(n2);

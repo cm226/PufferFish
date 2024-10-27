@@ -1,27 +1,28 @@
 
 
+use ast_util::with_alligned_stack;
+
 use crate::{
 asm_generator::{
-    asm_helpers::{gen_animation, INSTRUCTION}, code_generator::{
+    self, asm_helpers::{gen_animation, INSTRUCTION}, calling_convention_imp, code_generator::{
         Generator, Instruction
     }},
 ast_types::{self}};
 
 mod ast_functions;
-mod symbol_table;
-mod ast_util;
+pub mod symbol_table;
+pub mod ast_util;
 
-fn op_to_instr(op : &ast_types::Operator, gen: &mut Generator) { 
+fn op_to_instr(op : &ast_types::Operator, gen: &mut Generator, lhs : &str, rhs: &str) { 
     match op.value.as_str() {
         "+" => {
-            gen.add_inst(Instruction::from(INSTRUCTION::ADD, ["edx","eax"]));
+            gen.add_inst(Instruction::from(INSTRUCTION::ADDSD, [lhs,rhs]));
         },
         "-" => {
-            gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["edx","eax"]));
+            gen.add_inst(Instruction::from(INSTRUCTION::SUBSD, [lhs,rhs]));
         },
         "*" => {
-            gen.add_inst(Instruction::from(INSTRUCTION::MUL,["edx"]));
-            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx","eax"]));
+            gen.add_inst(Instruction::from(INSTRUCTION::MULSD,[lhs, rhs]));
         }
         _ => unreachable!()
     }
@@ -30,14 +31,16 @@ fn op_to_instr(op : &ast_types::Operator, gen: &mut Generator) {
 fn parse_value(value : &ast_types::Value, gen: &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String>{
     match value { 
         ast_types::Value::Number(num) =>{
-            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["edx", num.value.to_string().as_str()]));
+            let literal = format!(" __float64__({})",num.value);
+            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdx",literal.as_str()]));
+            gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["xmm0", "rdx"]));
             Ok(())
         }
         ast_types::Value::Varname(varname) => {
             let offset = scope.stack.get(&varname.value)
                 .ok_or(format!("Variable {} is not defined", varname.value))?;
 
-            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdx",&format!("[rbp-{}]",offset)]));
+            gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,["xmm0",&format!("[rbp-{}]",offset)]));
             Ok(())
         }
     }
@@ -54,9 +57,10 @@ fn parse_expression(expression : &ast_types::Expression, gen : &mut Generator, s
                 // we hold on to the first (in this case 1), calculate 2+3 (the second part)
                 // then evaluate the whole. 1 + (2+3)
                 parse_expression(&complex.expression[0], gen, scope)?;
-                gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax","edx"]));
+                gen.add_inst(Instruction::from(INSTRUCTION::MOVSD,["xmm1","xmm0"]));
+
                 parse_value(&complex.value, gen, scope)?;
-                op_to_instr(&complex.opperator, gen);
+                op_to_instr(&complex.opperator, gen,"xmm0", "xmm1");
                 Ok(())
             },
              ast_types::Expression::Function(fnc) => {
@@ -72,19 +76,21 @@ fn parse_assignment(assignment : &ast_types::Assignment, gen : &mut Generator, s
     let offset = scope.stack.get(&assignment.varname.value)
         .ok_or(format!("Variable {} is not defined", assignment.varname.value))?;
 
-    gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[rbp-{}]",offset), "rdx"]));    
+    gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
+    gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[rbp-{}]",offset), "rdx"]));  
 
     Ok(())
 }
 
-fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String> { 
-
+fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String> {  
+    use asm_generator::calling_convention_imp::Args;
     match fn_call.name.value.as_str() {
         "print" => {
             parse_expression(&fn_call.arg[0], gen, scope)?;
-            // move the thing to print into eax thats where we will print from
-            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["eax", "edx"]));
-            gen.add_inst(Instruction::from(INSTRUCTION::CALL,["print_fn"]));
+            asm_generator::calling_convention_imp::call_with(
+                "printf", 
+                [Args::StrPtr("print_fmt_str"),Args::FloatReg("xmm0")],
+                gen, scope)?
         },
         "anim" => {
             match &fn_call.arg[0] {
@@ -103,9 +109,14 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
         _ => {
             parse_expression(&fn_call.arg[0], gen, scope)?;
             scope.functions.get(&fn_call.name.value).ok_or(format!("Function: {} is not defined", fn_call.name.value))?;
-            gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdi", "rdx"])); // X64 calling convention, first param is in rdi
-            gen.add_inst(Instruction::from(INSTRUCTION::CALL,[String::from(&fn_call.name.value)]));
+            use asm_generator::calling_convention_imp::Args;
+            calling_convention_imp::call_with(
+                &fn_call.name.value,
+                [Args::FloatReg(("XMM0"))],
+                gen, scope)?;
+            // put ret in RDX
 
+            gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
         }
     }
 
@@ -113,9 +124,11 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
 }
 
 fn parse_declaration(dec : &ast_types::VarDeclaration, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String>{
-    parse_expression(&dec.value, gen, scope)?; // result not in edx
+    parse_expression(&dec.value, gen, scope)?; // result in xmm0
 
     ast_util::push_var_to_stack(&dec.name.value, scope);
+
+    gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
     gen.add_inst(Instruction::from(INSTRUCTION::PUSH,["rdx"]));
 
     Ok(())
@@ -191,8 +204,14 @@ pub fn generate_from_ast(ast : ast_types::File, generator : &mut Generator) -> R
         parse_line(&line, generator, &mut scope)?;
     }
 
+    // flush the output before we exit
+    with_alligned_stack(&scope, generator, &|gen| {
+        gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi","0"]));
+        gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rax","0"]));
+        gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["fflush"]));
+    });
+
     gen_animation(generator, scope.anim_stack); 
-    
     // cleanup the stack frame
     generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsp", "rbp"]));
     generator.add_inst(Instruction::from(INSTRUCTION::POP, ["rbp"]));

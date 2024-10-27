@@ -2,7 +2,7 @@
 WHITESPACE = _{ " " | "\r\n" | "\n"}
 operator = {"+"|"-"|"/"|"*"}
 varname = @{ASCII_ALPHANUMERIC+}
-number = { ASCII_DIGIT+ }
+number = { ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 value = { number | varname  }
 function = { varname ~ "(" ~ expression ~ ")"}
 complex_expression = {value ~ operator ~ expression}
