@@ -1,0 +1,12 @@
+name: build-and-test
+on:
+  push:
+    branches: [ main ]
+jobs:
+  check-bats-version:
+    runs-on: ubuntu-latest
+    container:
+      image: cm226/pufferfish:1.82-2.16
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo test
