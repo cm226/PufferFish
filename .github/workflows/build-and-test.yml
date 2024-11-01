@@ -3,7 +3,7 @@ on:
   push:
     branches: [ main ]
 jobs:
-  check-bats-version:
+  build-and-test:
     runs-on: ubuntu-latest
     container:
       image: cm226/pufferfish:1.82-2.16

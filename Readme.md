@@ -2,6 +2,8 @@
 
 Pufferfish is a compiler for a graphics programming language. 
 
+[![Build and Test](https://github.com/cm226/PufferFish/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/cm226/PufferFish/actions/workflows/build-and-test.yml)
+
 ## Example program
 
 A falling point example
