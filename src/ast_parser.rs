@@ -112,7 +112,7 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
             use asm_generator::calling_convention_imp::Args;
             calling_convention_imp::call_with(
                 &fn_call.name.value,
-                [Args::FloatReg(("XMM0"))],
+                [Args::FloatReg("XMM0")],
                 gen, scope)?;
             // put ret in RDX
 

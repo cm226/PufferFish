@@ -23,11 +23,8 @@ The anim function takes a function, that sets the y, x properties of the shape t
 
 ## Runtime Requirements
 
-* Nasm assembler (v 2.16 or later if you want debugging )
-* gnu linker (ld)
-* SDL2 
+* See Dockerfile
 
 ## Dev Requirements
 
-* Rust + cargo
-* gcc compiler
+* See Dockerfile

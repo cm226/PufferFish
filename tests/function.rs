@@ -4,7 +4,16 @@ mod util;
 
 #[test]
 fn function_test() -> Result<(), Error>{
-    let expected = "1.000000\n20.000000\n";
+    println!("starting function");
+    let expected = "1.00\n20.00\n";
     util::run_test("functions", expected)?;
+    Ok(())
+}
+
+#[test]
+fn function_stack_test() -> Result<(), Error>{
+    println!("starting stack test");
+    let expected = "200.00\n100.00\n9.00\n";
+    util::run_test("fn_stack", expected)?;
     Ok(())
 }

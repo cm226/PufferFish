@@ -156,7 +156,7 @@ impl Generator {
     let mut output = String::new();
 
     // Add the printf format
-    self.add_data(Data::from("print_fmt_str", "db", ["`%f\\n\\0`","0"]));
+    self.add_data(Data::from("print_fmt_str", "db", ["`%.2f\\n\\0`","0"]));
 
     // Add the exit code 
     self.add_inst(Instruction{

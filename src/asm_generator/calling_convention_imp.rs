@@ -2,6 +2,7 @@ use crate::ast_parser::{ast_util::with_alligned_stack, symbol_table};
 
 use super::{asm_helpers::INSTRUCTION, code_generator::{Generator, Instruction}};
 
+#[allow(dead_code)]
 pub enum Args<'a> { 
     Int(u32),
     StrPtr(&'a str),
@@ -28,12 +29,12 @@ pub fn call_with<'a, A>(fn_name : &str, args : A, gen : &mut Generator, scope: &
                     [reg,format!("{}",i).as_str()])
                 );
             }, 
-            Args::StrPtr(strPtr) => {
+            Args::StrPtr(str_ptr) => {
 
                 let reg = available_int_registers.pop().ok_or("ran out of registers, need impl")?;
                 gen.add_inst(
                     Instruction::from(INSTRUCTION::MOV, 
-                    [reg,strPtr]
+                    [reg,str_ptr]
                 ));
             },
             Args::Float(flt) => {
@@ -44,12 +45,12 @@ pub fn call_with<'a, A>(fn_name : &str, args : A, gen : &mut Generator, scope: &
                     [reg,format!("__float64__({}",flt).as_str()]
                 ));
             },
-            Args::FloatReg(fltReg) => {
+            Args::FloatReg(flt_reg) => {
 
                 let reg = available_float_registers.pop().ok_or("ran out of float registers, need impl")?;
                 gen.add_inst(
                     Instruction::from(INSTRUCTION::MOVAPD, 
-                    [reg,fltReg]
+                    [reg,flt_reg]
                 ));
             }
         }
