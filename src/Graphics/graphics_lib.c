@@ -10,6 +10,15 @@ SDL_Window* window = NULL;
 
 SDL_Surface* screenSurface = NULL;
 
+SDL_Rect center() { 
+  SDL_Rect r = {.x=SCREEN_WIDTH/2 , .y=SCREEN_HEIGHT/2, .h=0, .w=0};
+  return r;
+}
+
+extern void clear() {
+  SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x21, 0x21, 0x21));
+}
+
 extern void create_window(){
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     fprintf(stderr, "could not initialize sdl2: %s\n", SDL_GetError());
@@ -32,26 +41,19 @@ extern void create_window(){
  }
 
 extern void destroy_window(){
-  SDL_Delay(1000);
   SDL_DestroyWindow(window);
   SDL_Quit();
 }
 
 extern void blit() { 
   SDL_UpdateWindowSurface(window);
-  SDL_Delay(10); // todo
   clear();
 }
 
-extern void clear() {
-  SDL_FillRect(screenSurface, NULL, SDL_MapRGB(screenSurface->format, 0x21, 0x21, 0x21));
-}
-
-
 extern int draw_shape(int x, int y) {
-  SDL_Rect pos;
-  pos.x = x;
-  pos.y = y;
+  SDL_Rect pos = center();
+  pos.x += x;
+  pos.y += y;
   pos.w = 10;
   pos.h = 10;
   SDL_FillRect(screenSurface, &pos, SDL_MapRGB(screenSurface->format, 0xff, 0xff, 0xff));

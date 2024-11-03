@@ -1,9 +1,8 @@
 
 fn t(f) {
-    var PI = 3.14;
-    var rots = 2.0;
+    var TwoPI = 3.14 * 2.0;
     var frames = 500.0;
-    var deltaRad = PI * rots;
+    var deltaRad = TwoPI;
     deltaRad = 0.01256;
 
     var rad = f * deltaRad;
@@ -13,9 +12,6 @@ fn t(f) {
 
     x = x * 100.0;
     y = y * 100.0;
-
-    x = x + 100.0;
-    y = y + 100.0;
 };
 
 anim(t);
