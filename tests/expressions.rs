@@ -4,7 +4,7 @@ mod util;
 
 #[test]
 fn expression_test() -> Result<(), Error> {
-  let expected = "31.00\n200.00\n19.00\n";
+  let expected = "31.00\n200.00\n19.00\n0.50\n";
   util::run_test("expressions", expected)?;
   Ok(())
 }

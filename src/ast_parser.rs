@@ -23,6 +23,9 @@ fn op_to_instr(op : &ast_types::Operator, gen: &mut Generator, lhs : &str, rhs: 
         },
         "*" => {
             gen.add_inst(Instruction::from(INSTRUCTION::MULSD,[lhs, rhs]));
+        },
+        "/" => {
+            gen.add_inst(Instruction::from(INSTRUCTION::DIVSD, [lhs, rhs]));
         }
         _ => unreachable!()
     }
