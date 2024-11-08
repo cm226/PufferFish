@@ -1,18 +1,17 @@
-
 WHITESPACE = _{ " " | "\r\n" | "\n"}
 operator = {"+"|"-"|"/"|"*"}
 varname = @{ASCII_ALPHANUMERIC+}
 number = { ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
 value = { number | varname  }
-function = { varname ~ "(" ~ expression ~ ")"}
+function = { varname ~ "(" ~ expression ~ ("," ~ expression )* ~ ")"}
 complex_expression = {value ~ operator ~ expression}
 expression = { function | complex_expression | value }
 var_declaration = {"var" ~ varname ~ "=" ~ expression}
 fn_declaration = {
-  "fn " ~ varname ~ "(" ~ varname ~ ")" ~ "{" ~
+  "fn " ~ varname ~ "(" ~ varname ~ ("," ~ varname )* ~ ")" ~ "{" ~
     (line ~ ";")* ~
   "}"
 }
 assignment = { varname ~ "=" ~ expression }
-line = { assignment | var_declaration | fn_declaration | expression}
+line = { assignment | var_declaration | fn_declaration | expression }
 file = { SOI ~ (line ~ ";")* ~ EOI }

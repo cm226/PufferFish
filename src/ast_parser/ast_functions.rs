@@ -1,3 +1,6 @@
+use std::iter;
+
+use crate::asm_generator::calling_convention_imp;
 use crate::asm_generator::{
     asm_helpers::INSTRUCTION,
     code_generator::Instruction
@@ -5,7 +8,7 @@ use crate::asm_generator::{
 use crate::ast_parser::symbol_table::{SymbolTable, FunctionType};
 use crate::asm_generator::code_generator::{Generator,Label};
 use crate::ast_types::{self};
-use crate::ast_parser::ast_util::push_var_to_stack;
+use crate::ast_parser::ast_util::push_reg_to_stack;
 
 pub fn parse_fn_declaration(fn_decleration : &ast_types::FnDeclaration, generator : &mut Generator, scope: &mut SymbolTable) -> Result<(), String> { 
 
@@ -27,13 +30,11 @@ fn parse_xy_decleration(fn_dec : &ast_types::FnDeclaration, gen : &mut Generator
     start_stack_frame(&mut fn_generator);
     push_args_to_stack(fn_dec, &mut fn_generator, &mut fn_scope);
 
-    push_var_to_stack("x", &mut fn_scope);
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdi"]));
+    push_reg_to_stack("x", &mut fn_scope, &mut fn_generator, "rdi");
 
-    push_var_to_stack("y", &mut fn_scope);
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdi"]));
+    push_reg_to_stack("y", &mut fn_scope, &mut fn_generator, "rdi");
 
     generate_code_for_fn_body(fn_dec, &mut fn_generator, &mut fn_scope)?;
 
@@ -94,12 +95,11 @@ fn push_args_to_stack(
     fn_dec : &ast_types::FnDeclaration,
     fn_generator : &mut Generator,
     fn_scope: &mut SymbolTable
-) { 
-    // TODO curently only have support for single fn arg
-    push_var_to_stack(&fn_dec.arg.value, fn_scope);
+) -> Result<(), String> { 
 
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
-    fn_generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rdx"]));
+    let varnames : Vec<&str> = fn_dec.args.iter().map(|f|{f.value.as_str()}).collect();
+    calling_convention_imp::push_values_from_arg_reg_into_stack(varnames.iter(), fn_generator, fn_scope)?;
+    Ok(())
 }
 
 fn generate_code_for_fn_body(

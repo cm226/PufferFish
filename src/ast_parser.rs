@@ -1,6 +1,6 @@
 
 
-use ast_util::with_alligned_stack;
+use ast_util::{push_reg_to_stack, with_alligned_stack};
 
 use crate::{
 asm_generator::{
@@ -42,15 +42,15 @@ fn parse_value(value : &ast_types::Value, gen: &mut Generator, scope: &mut symbo
         ast_types::Value::Varname(varname) => {
             let offset = scope.stack.get(&varname.value)
                 .ok_or(format!("Variable {} is not defined", varname.value))?;
-
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,["xmm0",&format!("[rbp-{}]",offset)]));
             Ok(())
         }
     }
 }
 // Note Recursive, 
-// Contract, result is always put into edx
-fn parse_expression(expression : &ast_types::Expression, gen : &mut Generator, scope: &mut symbol_table::SymbolTable)-> Result<(), String> {
+// Contract, result is put in xmm0, xmm1 is also used when parsing expressions
+fn parse_expression(
+    expression : &ast_types::Expression, gen : &mut Generator, scope: &mut symbol_table::SymbolTable)-> Result<(), String> {
         match expression {
             ast_types::Expression::Value(value) => {
                 parse_value(value, gen, scope)
@@ -66,8 +66,8 @@ fn parse_expression(expression : &ast_types::Expression, gen : &mut Generator, s
                 op_to_instr(&complex.opperator, gen,"xmm0", "xmm1");
                 Ok(())
             },
-             ast_types::Expression::Function(fnc) => {
-                parse_fn_call(fnc, gen, scope)
+            ast_types::Expression::Function(function) =>{
+                parse_fn_call(function, gen, scope)
             }
         }
 }
@@ -89,14 +89,14 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
     use asm_generator::calling_convention_imp::Args;
     match fn_call.name.value.as_str() {
         "print" => {
-            parse_expression(&fn_call.arg[0], gen, scope)?;
+            parse_expression(&fn_call.args[0], gen, scope)?;
             asm_generator::calling_convention_imp::call_with(
                 "printf", 
-                [Args::StrPtr("print_fmt_str"),Args::FloatReg("xmm0")],
+                [Args::StrPtr("print_fmt_str"),Args::FloatReg("xmm0")].iter(),
                 gen, scope)?
         },
         "anim" => {
-            match &fn_call.arg[0] {
+            match &fn_call.args[0] {
                ast_types::Expression::Value(fn_name) => {
                     match fn_name {
                         ast_types::Value::Varname(fn_name) => {
@@ -110,16 +110,44 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
             }
         },
         _ => {
-            parse_expression(&fn_call.arg[0], gen, scope)?;
+            // Make sure the functio is in scope, raise compiler error if its not!
             scope.functions.get(&fn_call.name.value).ok_or(format!("Function: {} is not defined", fn_call.name.value))?;
+
+            // Eval all the expressions and push to the stack
+            let mut args: Vec<Args> = vec!();
+            for arg in &fn_call.args{
+                parse_expression(arg, gen, scope)?;   
+                gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
+
+                let tmp_arg_name = format!("__{}",args.len());
+                push_reg_to_stack(&tmp_arg_name, scope, gen, "rdx");
+                args.push(Args::FloatStack(tmp_arg_name));
+            }
+
             use asm_generator::calling_convention_imp::Args;
             calling_convention_imp::call_with(
                 &fn_call.name.value,
-                [Args::FloatReg("XMM0")],
+                args.iter(),
                 gen, scope)?;
-            // put ret in RDX
 
+
+            // remove the args expressions from the stack
+            // TODO I think we could do with a stack, manager impl here, with some 
+            // kind of temp alloc mode, instead of needing to pop off each individual
+            // entry, we should be able to just move the stack pointer. 
+            for arg in &args {
+                match arg {
+                    Args::FloatStack(name) =>{
+                        scope.stack.remove(name);
+                        gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rdx"]));
+                    },
+                    _ => ()
+                }
+            }
+            // put ret in RDX
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
+            
+
         }
     }
 
@@ -129,10 +157,8 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
 fn parse_declaration(dec : &ast_types::VarDeclaration, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String>{
     parse_expression(&dec.value, gen, scope)?; // result in xmm0
 
-    ast_util::push_var_to_stack(&dec.name.value, scope);
-
     gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
-    gen.add_inst(Instruction::from(INSTRUCTION::PUSH,["rdx"]));
+    ast_util::push_reg_to_stack(&dec.name.value, scope, gen, "rdx");
 
     Ok(())
 }
@@ -161,10 +187,10 @@ pub fn populate_symbols(ast : &ast_types::File, symbols : &mut symbol_table::Sym
         match line {
             ast_types::Line::Expression(exp) => {
                 match exp {
-                    ast_types::Expression::Function(call) => {
+                   ast_types::Expression::Function(call) =>{
                         match call.name.value.as_str() { 
                             "anim" => {
-                                match &call.arg[0] {
+                                match &call.args[0] {
                                     ast_types::Expression::Value(fn_name) => { 
                                         match fn_name {
                                             ast_types::Value::Varname(varname) => { 
@@ -181,8 +207,8 @@ pub fn populate_symbols(ast : &ast_types::File, symbols : &mut symbol_table::Sym
                         }
                     },
                     _ => ()
+                   }
                 }
-            },
             ast_types::Line::FnDeclaration(fn_decl) => {
                 // Normal fn type by default, overriden by specialty functions
                 if !symbols.functions.contains_key(fn_decl.name.value.as_str()) {

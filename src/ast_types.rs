@@ -54,8 +54,8 @@ pub struct ComplexExpression {
 #[pest_ast(rule(Rule::expression))]
 pub enum Expression {
     Value(Value),
-    Function(Function),
-    Complex(ComplexExpression)
+    Complex(ComplexExpression),
+    Function(Function)
 }
 
 #[derive(Debug, FromPest)]
@@ -70,7 +70,7 @@ pub struct VarDeclaration {
 #[pest_ast(rule(Rule::fn_declaration))]
 pub struct FnDeclaration {
     pub name : Varname,
-    pub arg : Varname,
+    pub args : Vec<Varname>,
     pub lines : Vec<Line>
 }
 
@@ -78,7 +78,7 @@ pub struct FnDeclaration {
 #[pest_ast(rule(Rule::function))]
 pub struct  Function {
     pub name : Varname,
-    pub arg : Vec<Expression>
+    pub args : Vec<Expression>
 }
 
 #[allow(dead_code)]
