@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::asm_generator::calling_convention_imp;
 use crate::asm_generator::{
     asm_helpers::INSTRUCTION,
@@ -28,7 +26,7 @@ fn parse_xy_decleration(fn_dec : &ast_types::FnDeclaration, gen : &mut Generator
 
     fn_generator.add_label(Label::from(fn_dec.name.value.as_str()));
     start_stack_frame(&mut fn_generator);
-    push_args_to_stack(fn_dec, &mut fn_generator, &mut fn_scope);
+    push_args_to_stack(fn_dec, &mut fn_generator, &mut fn_scope)?;
 
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
     push_reg_to_stack("x", &mut fn_scope, &mut fn_generator, "rdi");
@@ -65,7 +63,7 @@ fn parse_normal_fn_declaration(fn_dec : &ast_types::FnDeclaration, gen : &mut Ge
 
     fn_generator.add_label(Label::from(fn_dec.name.value.as_str()));
     start_stack_frame(&mut fn_generator);
-    push_args_to_stack(fn_dec, &mut fn_generator, &mut fn_scope);
+    push_args_to_stack(fn_dec, &mut fn_generator, &mut fn_scope)?;
     generate_code_for_fn_body(fn_dec, &mut fn_generator, &mut fn_scope)?;
     end_stack_frame(&mut fn_generator);
     gen.append(&mut fn_generator);

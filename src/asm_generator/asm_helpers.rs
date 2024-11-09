@@ -55,7 +55,7 @@ pub fn gen_animation(gen: &mut Generator, mut anim_stack: Stack<String>) {
     gen.add_inst(Instruction::from(INSTRUCTION::CALL, [anim_fn]));
   }
 
-  // allign the stack to 16-bit address, required when calling c functions
+  // align the stack to 16-bit address, required when calling c functions
   gen.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rbp"]));
   gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rbp", "rsp"]));
   gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["blit"]));

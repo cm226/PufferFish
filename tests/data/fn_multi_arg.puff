@@ -1,6 +1,0 @@
-fn test(f1, f2) { 
-    print(f1);
-    print(f2);
-};
-
-test(10.0, 20.0);

@@ -18,21 +18,21 @@ pub fn push_reg_to_stack(
 }
 
 
-pub fn with_alligned_stack(symbol_table : &SymbolTable, gen : &mut Generator, f: &dyn Fn(&mut Generator)->()){
-  allign_stack(symbol_table, gen);
+pub fn with_aligned_stack(symbol_table : &SymbolTable, gen : &mut Generator, f: &dyn Fn(&mut Generator)->()){
+  align_stack(symbol_table, gen);
   f(gen);
-  unallign_stack(symbol_table, gen);
+  unalign_stack(symbol_table, gen);
 }
 
-fn allign_stack(scope : &SymbolTable, gen : &mut Generator) {
+fn align_stack(scope : &SymbolTable, gen : &mut Generator) {
   
     let is_aligned = (scope.stack.len()%2) == 0;
     if !is_aligned{
-        gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["rsp","8"])); // allign the stack to 16-byte
+        gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["rsp","8"])); // align the stack to 16-byte
     } 
 }
 
-fn unallign_stack(scope : &SymbolTable, gen : &mut Generator) {
+fn unalign_stack(scope : &SymbolTable, gen : &mut Generator) {
 
     let is_aligned = (scope.stack.len()%2) == 0;
     if !is_aligned{

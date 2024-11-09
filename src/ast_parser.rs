@@ -1,6 +1,6 @@
 
 
-use ast_util::{push_reg_to_stack, with_alligned_stack};
+use ast_util::{push_reg_to_stack, with_aligned_stack};
 
 use crate::{
 asm_generator::{
@@ -234,7 +234,7 @@ pub fn generate_from_ast(ast : ast_types::File, generator : &mut Generator) -> R
     }
 
     // flush the output before we exit
-    with_alligned_stack(&scope, generator, &|gen| {
+    with_aligned_stack(&scope, generator, &|gen| {
         gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi","0"]));
         gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rax","0"]));
         gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["fflush"]));

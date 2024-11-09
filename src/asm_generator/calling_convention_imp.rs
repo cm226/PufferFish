@@ -1,6 +1,4 @@
-use core::slice;
-
-use crate::ast_parser::{ast_util::{push_reg_to_stack, with_alligned_stack}, symbol_table};
+use crate::ast_parser::{ast_util::{push_reg_to_stack, with_aligned_stack}, symbol_table};
 
 use super::{asm_helpers::INSTRUCTION, code_generator::{Generator, Instruction}};
 
@@ -93,7 +91,7 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
     ]));
 
 
-    with_alligned_stack(&scope, gen, &|gen : &mut Generator| {
+    with_aligned_stack(&scope, gen, &|gen : &mut Generator| {
         gen.add_inst(Instruction::from(INSTRUCTION::CALL, [fn_name]));
     });
     return Ok(());

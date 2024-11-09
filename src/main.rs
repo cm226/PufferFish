@@ -34,7 +34,6 @@ fn load_input_file(cli_args : &ArgMatches) -> Result<String, String> {
     Ok(input)
 }
 
-
 fn main() {
 
     let default_out = String::from("output");
