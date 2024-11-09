@@ -1,4 +1,6 @@
-use clap::{arg, command};
+use std::io::{self,IsTerminal};
+
+use clap::{arg, command, ArgMatches};
 
 use crate::from_pest::FromPest;
 
@@ -12,6 +14,26 @@ extern crate from_pest;
 #[macro_use]
 extern crate pest_ast;
 extern crate pest;
+
+fn load_input_file(cli_args : &ArgMatches) -> Result<String, String> { 
+
+    let input_from_file = cli_args.get_one::<String>("inputFile").and_then(
+        |f| Some(std::fs::read_to_string(f).expect("cannot read file"))
+    );
+
+    let input = input_from_file.or_else(||{
+
+        if io::stdin().is_terminal() {return None}
+
+        let stdin = io::read_to_string(io::stdin())
+            .expect("Failed to read from stdin");
+        Some(stdin)
+
+    }).expect("Failed to read input file, either pass input with -f, or pipe ");
+
+    Ok(input)
+}
+
 
 fn main() {
 
@@ -29,16 +51,12 @@ fn main() {
 
 
     let generate_debug_info = matches.get_flag("debug");
-
-    let input_file_path = matches.get_one::<String>("inputFile")
-        .expect("input file is required");
-    
+ 
     let output_file_path = matches.get_one::<String>("output")
         .or(Some(&default_out)).unwrap();
     
-    
-    let unparsed_file = std::fs::read_to_string(input_file_path).expect("cannot read file");
-    
+    let unparsed_file = load_input_file(&matches).expect("Input Parsing Fail:");
+
     let mut generator = asm_generator::code_generator::Generator::new();
     
     use pest::Parser;
