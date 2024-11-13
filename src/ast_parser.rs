@@ -7,7 +7,7 @@ asm_generator::{
     self, asm_helpers::{gen_animation, INSTRUCTION}, calling_convention_imp, code_generator::{
         Generator, Instruction
     }},
-ast_types::{self}};
+ast_types::{self}, errors::compiler_errors::CompilerErrors};
 
 mod ast_functions;
 pub mod symbol_table;
@@ -31,7 +31,7 @@ fn op_to_instr(op : &ast_types::Operator, gen: &mut Generator, lhs : &str, rhs: 
     }
 }
 
-fn parse_value(value : &ast_types::Value, gen: &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String>{
+fn parse_value(value : &ast_types::Value, gen: &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors>{
     match value { 
         ast_types::Value::Number(num) =>{
             let literal = format!(" __float64__({})",num.value);
@@ -41,7 +41,7 @@ fn parse_value(value : &ast_types::Value, gen: &mut Generator, scope: &mut symbo
         }
         ast_types::Value::Varname(varname) => {
             let offset = scope.stack.get(&varname.value)
-                .ok_or(format!("Variable {} is not defined", varname.value))?;
+                .ok_or(CompilerErrors::MissingVar(varname.value.clone()))?;
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,["xmm0",&format!("[rbp-{}]",offset)]));
             Ok(())
         }
@@ -50,7 +50,7 @@ fn parse_value(value : &ast_types::Value, gen: &mut Generator, scope: &mut symbo
 // Note Recursive, 
 // Contract, result is put in xmm0, xmm1 is also used when parsing expressions
 fn parse_expression(
-    expression : &ast_types::Expression, gen : &mut Generator, scope: &mut symbol_table::SymbolTable)-> Result<(), String> {
+    expression : &ast_types::Expression, gen : &mut Generator, scope: &mut symbol_table::SymbolTable)-> Result<(), CompilerErrors> {
         match expression {
             ast_types::Expression::Value(value) => {
                 parse_value(value, gen, scope)
@@ -72,12 +72,12 @@ fn parse_expression(
         }
 }
 
-fn parse_assignment(assignment : &ast_types::Assignment, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String>{
+fn parse_assignment(assignment : &ast_types::Assignment, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors>{
 
     parse_expression(&assignment.expression, gen, scope)?;
 
     let offset = scope.stack.get(&assignment.varname.value)
-        .ok_or(format!("Variable {} is not defined", assignment.varname.value))?;
+        .ok_or(CompilerErrors::MissingVar(assignment.varname.value.clone()))?;
 
     gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
     gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[rbp-{}]",offset), "rdx"]));  
@@ -85,7 +85,7 @@ fn parse_assignment(assignment : &ast_types::Assignment, gen : &mut Generator, s
     Ok(())
 }
 
-fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String> {  
+fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors> {  
     use asm_generator::calling_convention_imp::Args;
     match fn_call.name.value.as_str() {
         "print" => {
@@ -100,7 +100,7 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
                ast_types::Expression::Value(fn_name) => {
                     match fn_name {
                         ast_types::Value::Varname(fn_name) => {
-                            scope.functions.get(&fn_name.value).ok_or(format!("Function {} is not defined", fn_name.value))?;
+                            scope.functions.get(&fn_name.value).ok_or(CompilerErrors::MissingFunction(fn_name.value.clone()))?;
                             scope.anim_stack.push(String::from(&fn_name.value));
                         }
                         _ => unreachable!()
@@ -111,7 +111,7 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
         },
         _ => {
             // Make sure the functio is in scope, raise compiler error if its not!
-            scope.functions.get(&fn_call.name.value).ok_or(format!("Function: {} is not defined", fn_call.name.value))?;
+            scope.functions.get(&fn_call.name.value).ok_or(CompilerErrors::MissingFunction(fn_call.name.value.clone()))?;
 
             // Eval all the expressions and push to the stack
             let mut args: Vec<Args> = vec!();
@@ -154,7 +154,7 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
     Ok(())
 }
 
-fn parse_declaration(dec : &ast_types::VarDeclaration, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String>{
+fn parse_declaration(dec : &ast_types::VarDeclaration, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors>{
     parse_expression(&dec.value, gen, scope)?; // result in xmm0
 
     gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
@@ -164,7 +164,7 @@ fn parse_declaration(dec : &ast_types::VarDeclaration, gen : &mut Generator, sco
 }
 
 
-fn parse_line(line: &ast_types::Line, generator : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String>{
+fn parse_line(line: &ast_types::Line, generator : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors>{
     match line {
         ast_types::Line::Assignment(assignment) => {
             parse_assignment(assignment, generator, scope)
@@ -221,7 +221,7 @@ pub fn populate_symbols(ast : &ast_types::File, symbols : &mut symbol_table::Sym
     }
 }
 
-pub fn generate_from_ast(ast : ast_types::File, generator : &mut Generator) -> Result<(), String> {
+pub fn generate_from_ast(ast : ast_types::File, generator : &mut Generator) -> Result<(), CompilerErrors> {
     let mut scope = symbol_table::SymbolTable::new();
     populate_symbols(&ast, &mut scope);
 

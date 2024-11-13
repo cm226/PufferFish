@@ -2,18 +2,14 @@ use std::io::{self,IsTerminal};
 
 use clap::{arg, command, ArgMatches};
 
-use crate::from_pest::FromPest;
+use pufferfish_lib::asm_compiler;
+use pufferfish_lib::ast_parser;
+use pufferfish_lib::asm_generator;
+use pufferfish_lib::ast_types;
 
-mod ast_types;
-mod asm_generator;
-mod asm_compiler;
-mod ast_parser;
-
-extern crate pest_derive;
 extern crate from_pest;
-#[macro_use]
-extern crate pest_ast;
-extern crate pest;
+
+use crate::from_pest::FromPest;
 
 fn load_input_file(cli_args : &ArgMatches) -> Result<String, String> { 
 

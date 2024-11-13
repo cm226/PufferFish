@@ -1,4 +1,4 @@
-use crate::ast_parser::{ast_util::{push_reg_to_stack, with_aligned_stack}, symbol_table};
+use crate::{ast_parser::{ast_util::{push_reg_to_stack, with_aligned_stack}, symbol_table}, errors::compiler_errors::CompilerErrors};
 
 use super::{asm_helpers::INSTRUCTION, code_generator::{Generator, Instruction}};
 
@@ -19,7 +19,7 @@ pub fn push_values_from_arg_reg_into_stack<'a>(
     args : core::slice::Iter<& 'a str>,
     gen : &mut Generator,
     scope: &mut symbol_table::SymbolTable
-)->Result<(), String> 
+)->Result<(), CompilerErrors> 
 { 
     let mut available_int_registers = Vec::from(INT_REGISTERS);
     available_int_registers.reverse();
@@ -27,14 +27,15 @@ pub fn push_values_from_arg_reg_into_stack<'a>(
     available_float_registers.reverse();
 
     for arg in args { 
-        let reg = available_float_registers.pop().ok_or("Ran out of float regisers!!")?;
+        let reg = available_float_registers.pop().ok_or
+            (CompilerErrors::OutOfRegisters())?;
         gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", reg]));
         push_reg_to_stack(arg, scope, gen, "rdx");
     } 
     Ok(())
 }
 
-pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), String> 
+pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors> 
 { 
     let mut available_int_registers = Vec::from(INT_REGISTERS);
     available_int_registers.reverse();
@@ -46,7 +47,7 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
         match arg {
             Args::Int(i) => {  
                 
-                let reg = available_int_registers.pop().ok_or("ran out of registers, need impl")?;
+                let reg = available_int_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(
                     Instruction::from(INSTRUCTION::MOV, 
                     [reg,format!("{}",i).as_str()])
@@ -54,7 +55,7 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
             }, 
             Args::StrPtr(str_ptr) => {
 
-                let reg = available_int_registers.pop().ok_or("ran out of registers, need impl")?;
+                let reg = available_int_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(
                     Instruction::from(INSTRUCTION::MOV, 
                     [reg,str_ptr]
@@ -62,7 +63,7 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
             },
             Args::Float(flt) => {
                 
-                let reg = available_float_registers.pop().ok_or("ran out of float registers, need impl")?;
+                let reg = available_float_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(
                     Instruction::from(INSTRUCTION::MOV, 
                     [reg,format!("__float64__({}",flt).as_str()]
@@ -70,7 +71,7 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
             },
             Args::FloatReg(flt_reg) => {
 
-                let reg = available_float_registers.pop().ok_or("ran out of float registers, need impl")?;
+                let reg = available_float_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(
                     Instruction::from(INSTRUCTION::MOVAPD, 
                     [reg,flt_reg]
@@ -78,8 +79,8 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
             },
             Args::FloatStack(name) => {
 
-                let offset = scope.stack.get(name).ok_or("Invalid var name")?;
-                let reg = available_float_registers.pop().ok_or("ran out of float registers, need impl")?;
+                let offset = scope.stack.get(name).ok_or(CompilerErrors::MissingVar(String::from(name)))?;
+                let reg = available_float_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,[reg,&format!("[rbp-{}]",offset)]));
             }
         }

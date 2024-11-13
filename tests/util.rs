@@ -11,6 +11,7 @@ where A : IntoIterator<Item = S>,
   let mut child = Command::new(cmd)
   .args(args)
   .stdin(std::process::Stdio::piped())
+  .stderr(std::process::Stdio::piped())
   .stdout(std::process::Stdio::piped())
   .spawn()
   .expect("Failed to run compiler");
@@ -18,19 +19,19 @@ where A : IntoIterator<Item = S>,
   let mut stdin = child.stdin.take().expect("Failed to open stdin");
   stdin.write_all(piped.as_bytes())?;
   drop(stdin);
-  
+
   child.wait_with_output()
   .and_then(|f| {
+
     if !f.status.success() {
-      return Err(
+      let stderr = String::from_utf8_lossy(&f.stderr);
+          return Err(
         Error::new(
-          ErrorKind::Other, 
-          String::from(String::from_utf8_lossy(&f.stderr).to_string().trim()))
+          ErrorKind::Other, stderr)
       )
     }
     
-    
-    return Ok(String::from(String::from_utf8(f.stdout).unwrap()));
+    return Ok(String::from(String::from_utf8_lossy(&f.stdout)));
   })
 }
 
