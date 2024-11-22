@@ -24,7 +24,7 @@
     // Configure tool-specific properties.
     "customizations": {
         "vscode": {
-            "extensions":["rust-lang.rust-analyzer"]
+            "extensions":["rust-lang.rust-analyzer", "vadimcn.vscode-lldb"]
         }
     }
 

@@ -9,7 +9,9 @@ pub enum Args<'a> {
     StrPtr(&'a str),
     Float(f64),
     FloatReg(& 'a str),
-    FloatStack(String)
+    FloatStack(String),
+    IntStack(String),
+    IntReg(& 'a str)
 }
 
 const INT_REGISTERS: &'static [&str] = &["RDI", "RSI", "RDX", "RCX", "R82", "R9"];
@@ -82,6 +84,17 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
                 let offset = scope.stack.get(name).ok_or(CompilerErrors::MissingVar(String::from(name)))?;
                 let reg = available_float_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,[reg,&format!("[rbp-{}]",offset)]));
+            }
+            Args::IntStack(name) => {
+
+                let offset = scope.stack.get(name).ok_or(CompilerErrors::MissingVar(String::from(name)))?;
+                let reg = available_int_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
+                gen.add_inst(Instruction::from(INSTRUCTION::MOV,[reg,&format!("[rbp-{}]",offset)]));
+            }
+            Args::IntReg(int_reg) => {
+
+                let reg = available_int_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
+                gen.add_inst(Instruction::from(INSTRUCTION::MOV,[reg,int_reg]));
             }
         }
     }

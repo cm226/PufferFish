@@ -147,6 +147,7 @@ impl Generator {
     let _ = fmt::write(output, format_args!("extern clear\n")); // from graphics lib
     let _ = fmt::write(output, format_args!("extern printf\n")); // from c
     let _ = fmt::write(output, format_args!("extern fflush\n")); // from c
+    let _ = fmt::write(output, format_args!("extern loadImageTex\n")); // from c
     for global_extern in GLOBAL_EXTERNAL_FUNCTIONS { 
       let _ = fmt::write(output, format_args!("extern {}\n", global_extern)); // from c
     }
@@ -206,6 +207,7 @@ impl Generator {
   pub fn append(&mut self, gen: &mut Generator) {
     self.section_fn.append(&mut gen.section_text);
     self.section_bss.append(&mut gen.section_bss); // TODO implement proper stack not this BS
+    self.section_data.append(&mut gen.section_data);
   }
 
 }

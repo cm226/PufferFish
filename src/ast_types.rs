@@ -28,11 +28,20 @@ pub struct Assignment {
     pub varname: Varname,
     pub expression : Expression
 }
+
+#[derive(Debug, FromPest)]
+#[pest_ast(rule(Rule::string))]
+pub struct StringVal { 
+    #[pest_ast(outer(with(span_into_str), with(String::from)))]
+    pub value: String
+}
+
 #[derive(Debug, FromPest)]
 #[pest_ast(rule(Rule::value))]
 pub enum Value {
     Number(Number),
-    Varname(Varname)
+    Varname(Varname),
+    String(StringVal)
 }
 
 #[derive(Debug, FromPest)]

@@ -1,17 +1,24 @@
 
 
+use ast_functions::{end_stack_frame, start_stack_frame};
 use ast_util::{push_reg_to_stack, with_aligned_stack};
+use base64::{engine::general_purpose, Engine};
 
 use crate::{
 asm_generator::{
     self, asm_helpers::{gen_animation, INSTRUCTION}, calling_convention_imp, code_generator::{
-        Generator, Instruction
+        Data, Generator, Instruction
     }},
-ast_types::{self}, errors::compiler_errors::CompilerErrors};
+ast_types::{self, Expression}, errors::compiler_errors::CompilerErrors};
 
 mod ast_functions;
 pub mod symbol_table;
 pub mod ast_util;
+
+enum VarType { 
+    Float,
+    String
+}
 
 fn op_to_instr(op : &ast_types::Operator, gen: &mut Generator, lhs : &str, rhs: &str) { 
     match op.value.as_str() {
@@ -31,29 +38,41 @@ fn op_to_instr(op : &ast_types::Operator, gen: &mut Generator, lhs : &str, rhs: 
     }
 }
 
-fn parse_value(value : &ast_types::Value, gen: &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors>{
+fn parse_value(
+    value : &ast_types::Value,
+    gen: &mut Generator,
+    scope: &mut symbol_table::SymbolTable
+) -> Result<VarType, CompilerErrors>{
     match value { 
         ast_types::Value::Number(num) =>{
             let literal = format!(" __float64__({})",num.value);
             gen.add_inst(Instruction::from(INSTRUCTION::MOV,["rdx",literal.as_str()]));
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["xmm0", "rdx"]));
-            Ok(())
+            Ok(VarType::Float)
         }
         ast_types::Value::Varname(varname) => {
             let offset = scope.stack.get(&varname.value)
                 .ok_or(CompilerErrors::MissingVar(varname.value.clone()))?;
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,["xmm0",&format!("[rbp-{}]",offset)]));
-            Ok(())
+            Ok(VarType::Float)
+        },
+        ast_types::Value::String(str) => {
+            let str_literal = str.value.trim_matches('"');
+            let data_name = general_purpose::URL_SAFE_NO_PAD.encode(str_literal);
+            gen.add_data(Data::from(data_name.as_str(), "db", [format!("'{}',0x0",str_literal).as_str()]));
+            gen.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdx", data_name.as_str()]));
+            Ok(VarType::String)
         }
     }
 }
 // Note Recursive, 
 // Contract, result is put in xmm0, xmm1 is also used when parsing expressions
 fn parse_expression(
-    expression : &ast_types::Expression, gen : &mut Generator, scope: &mut symbol_table::SymbolTable)-> Result<(), CompilerErrors> {
+    expression : &ast_types::Expression, gen : &mut Generator, scope: &mut symbol_table::SymbolTable)->
+     Result<VarType, CompilerErrors> {
         match expression {
             ast_types::Expression::Value(value) => {
-                parse_value(value, gen, scope)
+                Ok(parse_value(value, gen, scope)?)
             },
             ast_types::Expression::Complex(complex) => {
                 // parser is not greedy so for expressions like 1+2+3
@@ -62,27 +81,47 @@ fn parse_expression(
                 parse_expression(&complex.expression[0], gen, scope)?;
                 gen.add_inst(Instruction::from(INSTRUCTION::MOVSD,["xmm1","xmm0"]));
 
-                parse_value(&complex.value, gen, scope)?;
+                let value_type = parse_value(&complex.value, gen, scope)?;
                 op_to_instr(&complex.opperator, gen,"xmm0", "xmm1");
-                Ok(())
+                Ok(value_type)
             },
             ast_types::Expression::Function(function) =>{
-                parse_fn_call(function, gen, scope)
+                parse_fn_call(function, gen, scope)?;
+                Ok(VarType::Float)
             }
         }
 }
 
 fn parse_assignment(assignment : &ast_types::Assignment, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors>{
 
-    parse_expression(&assignment.expression, gen, scope)?;
+    let value_type = parse_expression(&assignment.expression, gen, scope)?;
 
     let offset = scope.stack.get(&assignment.varname.value)
         .ok_or(CompilerErrors::MissingVar(assignment.varname.value.clone()))?;
 
-    gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
+    match value_type {
+        VarType::Float =>{
+            gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
+        },
+        _ => ()
+    }
     gen.add_inst(Instruction::from(INSTRUCTION::MOV,[&format!("[rbp-{}]",offset), "rdx"]));  
 
     Ok(())
+}
+
+fn fn_name_from_arg<'a>(arg : &'a Expression) -> &'a str { 
+    match arg {
+        ast_types::Expression::Value(fn_name) => {
+            match fn_name {
+                ast_types::Value::Varname(fn_name) => {
+                    return fn_name.value.as_str();
+                }
+                _ => unreachable!()
+            }
+        },
+        _ => unreachable!()
+    }
 }
 
 fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors> {  
@@ -96,18 +135,16 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
                 gen, scope)?
         },
         "anim" => {
-            match &fn_call.args[0] {
-               ast_types::Expression::Value(fn_name) => {
-                    match fn_name {
-                        ast_types::Value::Varname(fn_name) => {
-                            scope.functions.get(&fn_name.value).ok_or(CompilerErrors::MissingFunction(fn_name.value.clone()))?;
-                            scope.anim_stack.push(String::from(&fn_name.value));
-                        }
-                        _ => unreachable!()
-                    } 
-               },
-               _ => unreachable!()
+
+            if fn_call.args.len() != 2 { 
+                return Err(CompilerErrors::WrongArgs(String::from("anim"), String::from("2")));
             }
+            let xy_name = fn_name_from_arg(&fn_call.args[0]);
+            let shape_fn = fn_name_from_arg(&fn_call.args[1]);
+
+            scope.functions.get(xy_name).ok_or(CompilerErrors::MissingFunction(String::from(xy_name)))?;
+            scope.functions.get(shape_fn).ok_or(CompilerErrors::MissingFunction(String::from(shape_fn)))?;
+            scope.anim_stack.push(symbol_table::AnimPair { xy:String::from(xy_name), shape: String::from(shape_fn) });
         },
         _ => {
             // Make sure the functio is in scope, raise compiler error if its not!
@@ -176,7 +213,7 @@ fn parse_line(line: &ast_types::Line, generator : &mut Generator, scope: &mut sy
             ast_functions::parse_fn_declaration(fn_decleration, generator, scope)
         },
         ast_types::Line::Expression(expression) => {
-            parse_expression(expression, generator, scope)
+            parse_expression(expression, generator, scope).map(|_|())
         }
     }
 }
@@ -190,18 +227,10 @@ pub fn populate_symbols(ast : &ast_types::File, symbols : &mut symbol_table::Sym
                    ast_types::Expression::Function(call) =>{
                         match call.name.value.as_str() { 
                             "anim" => {
-                                match &call.args[0] {
-                                    ast_types::Expression::Value(fn_name) => { 
-                                        match fn_name {
-                                            ast_types::Value::Varname(varname) => { 
-                                                symbols.functions.insert(String::from(varname.value.as_str()), symbol_table::FunctionType::XY);
-                                                ()
-                                            }
-                                            _ => unreachable!()
-                                        }
-                                    },
-                                    _ => unreachable!()
-                                }
+                                let xy_fn = fn_name_from_arg(&call.args[0]);
+                                let shape_fn = fn_name_from_arg(&call.args[1]);
+                                symbols.functions.insert(String::from(xy_fn), symbol_table::FunctionType::XY);
+                                symbols.functions.insert(String::from(shape_fn), symbol_table::FunctionType::SHAPE);
                             },
                             _ => ()
                         }
@@ -226,9 +255,8 @@ pub fn generate_from_ast(ast : ast_types::File, generator : &mut Generator) -> R
     populate_symbols(&ast, &mut scope);
 
     // setup the stack frame
-    generator.add_inst(Instruction::from(INSTRUCTION::PUSH, ["rbp"]));
-    generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rbp", "rsp"]));
-
+    start_stack_frame(generator,&mut scope);
+    
     for line in ast.lines {
         parse_line(&line, generator, &mut scope)?;
     }
@@ -240,11 +268,9 @@ pub fn generate_from_ast(ast : ast_types::File, generator : &mut Generator) -> R
         gen.add_inst(Instruction::from(INSTRUCTION::CALL, ["fflush"]));
     });
 
-    gen_animation(generator, scope.anim_stack); 
+    gen_animation(generator, &mut scope)?; 
     // cleanup the stack frame
-    generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rsp", "rbp"]));
-    generator.add_inst(Instruction::from(INSTRUCTION::POP, ["rbp"]));
-
+    end_stack_frame(generator, &mut scope);
 
     Ok(())
 }

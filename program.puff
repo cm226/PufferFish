@@ -1,4 +1,5 @@
-fn t(f) {
+
+fn position(f) {
     var TwoPI = 3.14 * 2.0;
     var frames = 500.0;
     var deltaRad = TwoPI;
@@ -6,11 +7,18 @@ fn t(f) {
 
     var rad = f * deltaRad;
 
-    x = sin(rad);
-    y = cos(rad);
+    x = cos(rad);
+    y = sin(rad);
 
     x = x * 100.0;
     y = y * 100.0;
+
+    y = y - 25.0;
+    x = x - 25.0;
 };
 
-anim(t);
+fn shape(f) { 
+    tex = "Ball.png";
+};
+
+anim(position, shape);

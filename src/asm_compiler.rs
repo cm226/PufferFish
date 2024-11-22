@@ -43,6 +43,7 @@ pub fn compile_asm(asm : &str, generate_debug_info : bool, output: &String) -> R
     "-m", "elf_x86_64",
     "-o", output,
     "-l","SDL2",
+    "-l","SDL2_image",
     "-l","c",
     "-l","m",
     "-dynamic-linker","/lib64/ld-linux-x86-64.so.2", // Use the 64bit loader

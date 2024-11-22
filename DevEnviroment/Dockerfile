@@ -6,7 +6,7 @@ FROM rust:${RUST_VERSION}
 ARG NASM_VERSION
 
 RUN apt-get update &&\
-    apt-get -y install libsdl2-dev
+    apt-get -y install libsdl2-dev libsdl2-image-dev
 
 RUN wget https://www.nasm.us/pub/nasm/releasebuilds/${NASM_VERSION}/nasm-${NASM_VERSION}.tar.bz2	&& \
     tar xfj ./nasm-${NASM_VERSION}.tar.bz2

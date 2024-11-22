@@ -17,6 +17,25 @@ pub fn push_reg_to_stack(
     gen.add_inst(Instruction::from(INSTRUCTION::PUSH, [reg]));
 }
 
+pub fn make_anonyomus_stack_alloc(
+    reg: &str,
+    scope : &mut SymbolTable,
+    gen : &mut Generator
+) { 
+    scope.anonymous_stack_alloc += 1;
+    gen.add_inst(Instruction::from(INSTRUCTION::PUSH, [reg]));
+}
+
+pub fn pop_anoynomus_stack(
+    reg: &str, 
+    scope : &mut SymbolTable, 
+    gen : &mut Generator
+) {
+    assert!(scope.anonymous_stack_alloc > 0);
+    scope.anonymous_stack_alloc -= 1;
+    gen.add_inst(Instruction::from(INSTRUCTION::POP, [reg]));
+
+}
 
 pub fn with_aligned_stack(symbol_table : &SymbolTable, gen : &mut Generator, f: &dyn Fn(&mut Generator)->()){
   align_stack(symbol_table, gen);
@@ -26,7 +45,7 @@ pub fn with_aligned_stack(symbol_table : &SymbolTable, gen : &mut Generator, f: 
 
 fn align_stack(scope : &SymbolTable, gen : &mut Generator) {
   
-    let is_aligned = (scope.stack.len()%2) == 0;
+    let is_aligned = ((scope.stack.len()+scope.anonymous_stack_alloc)%2) == 0;
     if !is_aligned{
         gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["rsp","8"])); // align the stack to 16-byte
     } 
@@ -34,7 +53,7 @@ fn align_stack(scope : &SymbolTable, gen : &mut Generator) {
 
 fn unalign_stack(scope : &SymbolTable, gen : &mut Generator) {
 
-    let is_aligned = (scope.stack.len()%2) == 0;
+    let is_aligned = ((scope.stack.len()+scope.anonymous_stack_alloc)%2) == 0;
     if !is_aligned{
         gen.add_inst(Instruction::from(INSTRUCTION::ADD, ["rsp","8"]));
     } 
