@@ -1,4 +1,4 @@
-use crate::{ast_parser::{ast_util::{push_reg_to_stack, with_aligned_stack}, symbol_table}, errors::compiler_errors::CompilerErrors};
+use crate::{ast_parser::{ast_util::{push_reg_to_stack, with_aligned_stack}, symbol_table::{self, VarStack}}, errors::compiler_errors::CompilerErrors};
 
 use super::{asm_helpers::INSTRUCTION, code_generator::{Generator, Instruction}};
 
@@ -9,8 +9,8 @@ pub enum Args<'a> {
     StrPtr(&'a str),
     Float(f64),
     FloatReg(& 'a str),
-    FloatStack(String),
-    IntStack(String),
+    FloatStack(usize),
+    IntStack(usize),
     IntReg(& 'a str)
 }
 
@@ -20,7 +20,7 @@ const FLOAT_REGISTERS: &'static [&str] = &["XMM0", "XMM1", "XMM2", "XMM3", "XMM4
 pub fn push_values_from_arg_reg_into_stack<'a>(
     args : core::slice::Iter<& 'a str>,
     gen : &mut Generator,
-    scope: &mut symbol_table::SymbolTable
+    stack: &mut VarStack
 )->Result<(), CompilerErrors> 
 { 
     let mut available_int_registers = Vec::from(INT_REGISTERS);
@@ -32,12 +32,12 @@ pub fn push_values_from_arg_reg_into_stack<'a>(
         let reg = available_float_registers.pop().ok_or
             (CompilerErrors::OutOfRegisters())?;
         gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", reg]));
-        push_reg_to_stack(arg, scope, gen, "rdx");
+        push_reg_to_stack(arg, stack, gen, "rdx");
     } 
     Ok(())
 }
 
-pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &mut Generator, scope: &mut symbol_table::SymbolTable) -> Result<(), CompilerErrors> 
+pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &mut Generator, scope: &symbol_table::SymbolTable) -> Result<(), CompilerErrors> 
 { 
     let mut available_int_registers = Vec::from(INT_REGISTERS);
     available_int_registers.reverse();
@@ -79,15 +79,11 @@ pub fn call_with<'a>(fn_name : &str, args : core::slice::Iter<Args<'a>>, gen : &
                     [reg,flt_reg]
                 ));
             },
-            Args::FloatStack(name) => {
-
-                let offset = scope.stack.get(name).ok_or(CompilerErrors::MissingVar(String::from(name)))?;
+            Args::FloatStack(offset) => {
                 let reg = available_float_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,[reg,&format!("[rbp-{}]",offset)]));
             }
-            Args::IntStack(name) => {
-
-                let offset = scope.stack.get(name).ok_or(CompilerErrors::MissingVar(String::from(name)))?;
+            Args::IntStack(offset) => {
                 let reg = available_int_registers.pop().ok_or(CompilerErrors::OutOfRegisters())?;
                 gen.add_inst(Instruction::from(INSTRUCTION::MOV,[reg,&format!("[rbp-{}]",offset)]));
             }

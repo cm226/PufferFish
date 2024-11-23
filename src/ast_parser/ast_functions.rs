@@ -32,13 +32,11 @@ fn parse_shape_function(fn_dec : &ast_types::FnDeclaration, gen : &mut Generator
     push_args_to_stack(fn_dec, &mut fn_generator, &mut fn_scope)?;
 
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
-    push_reg_to_stack("tex", &mut fn_scope, &mut fn_generator, "rdi");
+    push_reg_to_stack("tex", &mut fn_scope.visible_stack, &mut fn_generator, "rdi");
 
     generate_code_for_fn_body(fn_dec, &mut fn_generator, &mut fn_scope)?;
 
-    let tex_offset = fn_scope.stack.get("tex")
-        .ok_or(CompilerErrors::MissingVar(String::from("tex")))?;
-
+    let tex_offset = fn_scope.visible_stack.get_stack_address("tex")?;
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", &format!("[rbp-{}]",tex_offset)]));
     
     end_stack_frame(&mut fn_generator, &mut fn_scope);
@@ -56,18 +54,15 @@ fn parse_xy_decleration(fn_dec : &ast_types::FnDeclaration, gen : &mut Generator
     push_args_to_stack(fn_dec, &mut fn_generator, &mut fn_scope)?;
 
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
-    push_reg_to_stack("x", &mut fn_scope, &mut fn_generator, "rdi");
+    push_reg_to_stack("x", &mut fn_scope.visible_stack, &mut fn_generator, "rdi");
 
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOV, ["rdi", "0"]));
-    push_reg_to_stack("y", &mut fn_scope, &mut fn_generator, "rdi");
+    push_reg_to_stack("y", &mut fn_scope.visible_stack, &mut fn_generator, "rdi");
 
     generate_code_for_fn_body(fn_dec, &mut fn_generator, &mut fn_scope)?;
 
-    let x_offset = fn_scope.stack.get("x")
-        .ok_or(CompilerErrors::MissingVar(String::from("X")))?;
-
-    let y_offset = fn_scope.stack.get("y")
-        .ok_or(CompilerErrors::MissingVar(String::from("y")))?;
+    let x_offset = fn_scope.visible_stack.get_stack_address("x")?;
+    let y_offset = fn_scope.visible_stack.get_stack_address("y")?;
 
     fn_generator.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["xmm0", &format!("[rbp-{}]",x_offset)]));
     fn_generator.add_inst(Instruction::from(INSTRUCTION::CVTSD2SI, ["rdi", "xmm0"]));
@@ -123,7 +118,7 @@ fn push_args_to_stack(
 ) -> Result<(), CompilerErrors> { 
 
     let varnames : Vec<&str> = fn_dec.args.iter().map(|f|{f.value.as_str()}).collect();
-    calling_convention_imp::push_values_from_arg_reg_into_stack(varnames.iter(), fn_generator, fn_scope)?;
+    calling_convention_imp::push_values_from_arg_reg_into_stack(varnames.iter(), fn_generator, &mut fn_scope.visible_stack)?;
     Ok(())
 }
 

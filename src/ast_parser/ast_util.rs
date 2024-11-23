@@ -1,40 +1,30 @@
 use crate::asm_generator::asm_helpers::INSTRUCTION;
 use crate::ast_parser::symbol_table::SymbolTable;
 use crate::asm_generator::code_generator::{Generator,Instruction};
+use crate::errors::compiler_errors::CompilerErrors;
+
+use super::symbol_table::VarStack;
 
 pub fn push_reg_to_stack(
     name: &str,
-    scope: &mut SymbolTable,
+    var_stack: &mut VarStack,
     gen : &mut Generator,
-    reg : &str ) {
-
-    // I must be missing something here?
-    // (scope.len() * 8) i would have thought would be the address of the next thing that will be added to the stack
-    // so the +4 shouldn't be needed. But it looks like it is needed. 
-    // So when rsb == rsp (theres nothing on the stack) when you add the first thing, you need to use the address rsb + 8? 
-    // so thats stored at esb? 
-    scope.stack.insert(String::from(name), (scope.stack.len() * 8)+8);
+    reg : &str) {
+    var_stack.add(String::from(name));
     gen.add_inst(Instruction::from(INSTRUCTION::PUSH, [reg]));
 }
 
-pub fn make_anonyomus_stack_alloc(
-    reg: &str,
-    scope : &mut SymbolTable,
-    gen : &mut Generator
-) { 
-    scope.anonymous_stack_alloc += 1;
-    gen.add_inst(Instruction::from(INSTRUCTION::PUSH, [reg]));
-}
-
-pub fn pop_anoynomus_stack(
+pub fn pop_stack_to_reg(
+    name: &str,
     reg: &str, 
-    scope : &mut SymbolTable, 
+    var_stack : &mut VarStack, 
     gen : &mut Generator
-) {
-    assert!(scope.anonymous_stack_alloc > 0);
-    scope.anonymous_stack_alloc -= 1;
+) -> Result<(), CompilerErrors>{
+    // TODO can we get the address of the name, and check it matches what we are about to pop?
+    // Maybe we can check at least that is has the highest offset? 
+    var_stack.get_stack_address(name)?;
     gen.add_inst(Instruction::from(INSTRUCTION::POP, [reg]));
-
+    Ok(())
 }
 
 pub fn with_aligned_stack(symbol_table : &SymbolTable, gen : &mut Generator, f: &dyn Fn(&mut Generator)->()){
@@ -45,7 +35,7 @@ pub fn with_aligned_stack(symbol_table : &SymbolTable, gen : &mut Generator, f: 
 
 fn align_stack(scope : &SymbolTable, gen : &mut Generator) {
   
-    let is_aligned = ((scope.stack.len()+scope.anonymous_stack_alloc)%2) == 0;
+    let is_aligned = scope.get_stack_allocs()%2 == 0;
     if !is_aligned{
         gen.add_inst(Instruction::from(INSTRUCTION::SUB, ["rsp","8"])); // align the stack to 16-byte
     } 
@@ -53,7 +43,7 @@ fn align_stack(scope : &SymbolTable, gen : &mut Generator) {
 
 fn unalign_stack(scope : &SymbolTable, gen : &mut Generator) {
 
-    let is_aligned = ((scope.stack.len()+scope.anonymous_stack_alloc)%2) == 0;
+    let is_aligned = scope.get_stack_allocs()%2 == 0;
     if !is_aligned{
         gen.add_inst(Instruction::from(INSTRUCTION::ADD, ["rsp","8"]));
     } 

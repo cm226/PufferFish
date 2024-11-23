@@ -51,8 +51,7 @@ fn parse_value(
             Ok(VarType::Float)
         }
         ast_types::Value::Varname(varname) => {
-            let offset = scope.stack.get(&varname.value)
-                .ok_or(CompilerErrors::MissingVar(varname.value.clone()))?;
+            let offset = scope.visible_stack.get_stack_address(&varname.value)?;
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ,["xmm0",&format!("[rbp-{}]",offset)]));
             Ok(VarType::Float)
         },
@@ -96,9 +95,7 @@ fn parse_assignment(assignment : &ast_types::Assignment, gen : &mut Generator, s
 
     let value_type = parse_expression(&assignment.expression, gen, scope)?;
 
-    let offset = scope.stack.get(&assignment.varname.value)
-        .ok_or(CompilerErrors::MissingVar(assignment.varname.value.clone()))?;
-
+    let offset = scope.visible_stack.get_stack_address(&assignment.varname.value)?;
     match value_type {
         VarType::Float =>{
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
@@ -152,13 +149,17 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
 
             // Eval all the expressions and push to the stack
             let mut args: Vec<Args> = vec!();
+            let mut arg_names: Vec<String> = vec!();
+
             for arg in &fn_call.args{
                 parse_expression(arg, gen, scope)?;   
                 gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
 
                 let tmp_arg_name = format!("__{}",args.len());
-                push_reg_to_stack(&tmp_arg_name, scope, gen, "rdx");
-                args.push(Args::FloatStack(tmp_arg_name));
+                push_reg_to_stack(&tmp_arg_name, &mut scope.hidden_stack, gen, "rdx");
+                let offset = scope.hidden_stack.get_stack_address(&tmp_arg_name)?;
+                args.push(Args::FloatStack(*offset));
+                arg_names.push(tmp_arg_name);
             }
 
             use asm_generator::calling_convention_imp::Args;
@@ -172,14 +173,9 @@ fn parse_fn_call(fn_call : &ast_types::Function, gen : &mut Generator, scope: &m
             // TODO I think we could do with a stack, manager impl here, with some 
             // kind of temp alloc mode, instead of needing to pop off each individual
             // entry, we should be able to just move the stack pointer. 
-            for arg in &args {
-                match arg {
-                    Args::FloatStack(name) =>{
-                        scope.stack.remove(name);
-                        gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rdx"]));
-                    },
-                    _ => ()
-                }
+            for name in arg_names {
+                scope.hidden_stack.remove(&name)?;
+                gen.add_inst(Instruction::from(INSTRUCTION::POP, ["rdx"]));
             }
             // put ret in RDX
             gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
@@ -195,7 +191,7 @@ fn parse_declaration(dec : &ast_types::VarDeclaration, gen : &mut Generator, sco
     parse_expression(&dec.value, gen, scope)?; // result in xmm0
 
     gen.add_inst(Instruction::from(INSTRUCTION::MOVQ, ["rdx", "xmm0"]));
-    ast_util::push_reg_to_stack(&dec.name.value, scope, gen, "rdx");
+    ast_util::push_reg_to_stack(&dec.name.value, &mut scope.visible_stack, gen, "rdx");
 
     Ok(())
 }
